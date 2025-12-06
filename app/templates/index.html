@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendame - Painel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #8A2BE2;
+            --primary-light: #a855f7;
+            --primary-dark: #7c3aed;
+            --secondary-color: #f0f0f0;
+            --accent-color: #10b981;
+            --danger-color: #ef4444;
+            --text-dark: #333;
+            --text-light: #666;
+            --text-white: #fff;
+            --border-color: #ddd;
+            --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f9f9f9;
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Login Page Styles */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-container::before {
+            content: "";
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            top: -100px;
+            left: -100px;
+        }
+
+        .login-container::after {
+            content: "";
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            bottom: -80px;
+            right: -80px;
+        }
+
+        .login-box {
+            background-color: white;
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: var(--card-shadow);
+            z-index: 10;
+            position: relative;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo-icon {
+            font-size: 48px;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .logo h1 {
+            font-size: 32px;
+            color: var(--primary-color);
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logo span {
+            color: var(--text-light);
+            font-weight: 400;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 16px;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-success {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #0da271;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        /* Dashboard Styles */
+        .dashboard-container {
+            display: none;
+            min-height: 100vh;
+        }
+
+        .header {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-logo i {
+            font-size: 28px;
+            color: var(--primary-color);
+        }
+
+        .header-logo h2 {
+            color: var(--primary-color);
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info span {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-light);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .dashboard-content {
+            padding: 30px 0;
+        }
+
+        .dashboard-title {
+            margin-bottom: 30px;
+        }
+
+        .dashboard-title h1 {
+            font-size: 28px;
+            color: var(--text-dark);
+        }
+
+        .dashboard-title p {
+            color: var(--text-light);
+            margin-top: 5px;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background-color: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: white;
+        }
+
+        .revenue-icon {
+            background-color: var(--accent-color);
+        }
+
+        .clients-icon {
+            background-color: var(--primary-color);
+        }
+
+        .stat-info h3 {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .clients-container {
+            background-color: white;
+            border-radius: 16px;
+            padding: 0;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+        }
+
+        .clients-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .clients-header h2 {
+            font-size: 20px;
+            color: var(--text-dark);
+        }
+
+        .clients-count {
+            background-color: var(--primary-light);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .clients-list {
+            padding: 0;
+        }
+
+        .client-item {
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr 1fr;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            align-items: center;
+            transition: var(--transition);
+        }
+
+        .client-item:hover {
+            background-color: rgba(138, 43, 226, 0.03);
+        }
+
+        .client-item:last-child {
+            border-bottom: none;
+        }
+
+        .client-name {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .client-service {
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .client-price {
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .client-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .action-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            color: white;
+            font-size: 16px;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .action-remove {
+            background-color: var(--danger-color);
+        }
+
+        .action-whatsapp {
+            background-color: #25D366;
+        }
+
+        .no-clients {
+            padding: 60px 20px;
+            text-align: center;
+            color: var(--text-light);
+        }
+
+        .no-clients i {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: var(--border-color);
+        }
+
+        .whatsapp-message {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: #25D366;
+            color: white;
+            border-radius: 50px;
+            padding: 15px 25px;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            z-index: 1000;
+            transition: var(--transition);
+            display: none;
+        }
+
+        .whatsapp-message:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(37, 211, 102, 0.4);
+        }
+
+        .whatsapp-message i {
+            font-size: 24px;
+        }
+
+        .whatsapp-message span {
+            font-weight: 600;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 992px) {
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .client-item {
+                grid-template-columns: 1fr;
+                gap: 15px;
+                padding: 20px;
+            }
+
+            .client-actions {
+                justify-content: flex-start;
+            }
+
+            .login-box {
+                margin: 20px;
+                padding: 30px 25px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .user-info {
+                align-self: flex-end;
+            }
+
+            .logo h1 {
+                font-size: 28px;
+            }
+
+            .stat-card {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+
+            .whatsapp-message {
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div class="login-container" id="loginPage">
+        <div class="login-box">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <h1>Agendame</h1>
+                <span>Agendamento automático para salões</span>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" class="form-control" placeholder="seu@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" class="form-control" placeholder="Sua senha" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Entrar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="dashboard-container" id="dashboardPage">
+        <header class="header">
+            <div class="container header-content">
+                <div class="header-logo">
+                    <i class="fas fa-calendar-check"></i>
+                    <h2>Agendame</h2>
+                </div>
+
+                <div class="user-info">
+                    <span>Admin</span>
+                    <div class="avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard-content">
+            <div class="container">
+                <div class="dashboard-title">
+                    <h1>Painel de Agendamentos</h1>
+                    <p>Gerencie seus clientes e agendamentos</p>
+                </div>
+
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-icon revenue-icon">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>GANHO POTENCIAL</h3>
+                            <div class="stat-value" id="totalRevenue">R$ 730,00</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon clients-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>CLIENTES EM ESPERA</h3>
+                            <div class="stat-value" id="clientsWaiting">5</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="clients-container">
+                    <div class="clients-header">
+                        <h2>Próximos Agendamentos</h2>
+                        <div class="clients-count" id="clientsCount">5 clientes</div>
+                    </div>
+
+                    <div class="clients-list" id="clientsList">
+                        <!-- Clientes serão carregados aqui via JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div class="whatsapp-message" id="whatsappMessage">
+            <i class="fab fa-whatsapp"></i>
+            <span>Mensagem enviada com sucesso!</span>
+        </div>
+    </div>
+
+    <script>
+        // Dados dos clientes
+        const clients = [
+            { id: 1, name: "João", service: "Corte Simples", price: 20, phone: "+5511999999999", status: "waiting" },
+            { id: 2, name: "Otavio", service: "Corte Simples", price: 20, phone: "+5511999999998", status: "waiting" },
+            { id: 3, name: "Maria", service: "Aplicação", price: 320, phone: "+5511999999997", status: "waiting" },
+            { id: 4, name: "Lucas", service: "Barba e Cabelo", price: 40, phone: "+5511999999996", status: "waiting" },
+            { id: 5, name: "Ana", service: "Manicure", price: 30, phone: "+5511999999995", status: "waiting" }
+        ];
+
+        // Elementos DOM
+        const loginPage = document.getElementById('loginPage');
+        const dashboardPage = document.getElementById('dashboardPage');
+        const loginForm = document.getElementById('loginForm');
+        const clientsList = document.getElementById('clientsList');
+        const totalRevenue = document.getElementById('totalRevenue');
+        const clientsWaiting = document.getElementById('clientsWaiting');
+        const clientsCount = document.getElementById('clientsCount');
+        const whatsappMessage = document.getElementById('whatsappMessage');
+
+        // Inicializar a aplicação
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar se já está logado (para demonstração)
+            const isLoggedIn = localStorage.getItem('agendame_logged_in');
+
+            if (isLoggedIn === 'true') {
+                showDashboard();
+            } else {
+                showLogin();
+            }
+
+            // Carregar lista de clientes
+            renderClients();
+            updateStats();
+        });
+
+        // Mostrar página de login
+        function showLogin() {
+            loginPage.style.display = 'flex';
+            dashboardPage.style.display = 'none';
+        }
+
+        // Mostrar dashboard
+        function showDashboard() {
+            loginPage.style.display = 'none';
+            dashboardPage.style.display = 'block';
+        }
+
+        // Formulário de login
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            // Validação simples para demonstração
+            if (email && password) {
+                // Salvar login (para demonstração)
+                localStorage.setItem('agendame_logged_in', 'true');
+
+                // Mostrar dashboard
+                showDashboard();
+            } else {
+                alert('Por favor, preencha todos os campos!');
+            }
+        });
+
+        // Renderizar lista de clientes
+        function renderClients() {
+            clientsList.innerHTML = '';
+
+            if (clients.length === 0) {
+                clientsList.innerHTML = `
+                    <div class="no-clients">
+                        <i class="fas fa-user-clock"></i>
+                        <h3>Nenhum cliente em espera</h3>
+                        <p>Os agendamentos aparecerão aqui</p>
+                    </div>
+                `;
+                return;
+            }
+
+            clients.forEach(client => {
+                const clientElement = document.createElement('div');
+                clientElement.className = 'client-item';
+                clientElement.innerHTML = `
+                    <div class="client-name">${client.name}</div>
+                    <div class="client-service">${client.service}</div>
+                    <div class="client-price">R$ ${client.price.toFixed(2)}</div>
+                    <div class="client-actions">
+                        <button class="action-btn action-remove" onclick="removeClient(${client.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button class="action-btn action-whatsapp" onclick="sendWhatsAppMessage(${client.id})">
+                            <i class="fab fa-whatsapp"></i>
+                        </button>
+                    </div>
+                `;
+
+                clientsList.appendChild(clientElement);
+            });
+        }
+
+        // Atualizar estatísticas
+        function updateStats() {
+            // Calcular ganho total
+            const total = clients.reduce((sum, client) => sum + client.price, 0);
+            totalRevenue.textContent = `R$ ${total.toFixed(2)}`;
+
+            // Atualizar contagem de clientes
+            clientsWaiting.textContent = clients.length;
+            clientsCount.textContent = `${clients.length} ${clients.length === 1 ? 'cliente' : 'clientes'}`;
+        }
+
+        // Remover cliente
+        function removeClient(clientId) {
+            if (confirm('Tem certeza que deseja remover este cliente da lista?')) {
+                const index = clients.findIndex(client => client.id === clientId);
+
+                if (index !== -1) {
+                    clients.splice(index, 1);
+                    renderClients();
+                    updateStats();
+                }
+            }
+        }
+
+        // Enviar mensagem WhatsApp
+        function sendWhatsAppMessage(clientId) {
+            const client = clients.find(client => client.id === clientId);
+
+            if (!client) return;
+
+            // Mensagem padrão amigável
+            const message = `Olá ${client.name}! ☺️ Seu horário no salão está chegando! Você já pode vir para o seu ${client.service}. Estamos te esperando!`;
+
+            // Codificar a mensagem para URL
+            const encodedMessage = encodeURIComponent(message);
+
+            // Criar link do WhatsApp
+            const whatsappURL = `https://wa.me/${client.phone}?text=${encodedMessage}`;
+
+            // Abrir WhatsApp
+            window.open(whatsappURL, '_blank');
+
+            // Mostrar notificação
+            whatsappMessage.style.display = 'flex';
+
+            // Esconder notificação após 3 segundos
+            setTimeout(() => {
+                whatsappMessage.style.display = 'none';
+            }, 3000);
+
+            // Atualizar status do cliente
+            client.status = 'notified';
+
+            // Para demonstração, removeremos o cliente após notificação
+            // Em um sistema real, você pode querer mudar apenas o status
+            setTimeout(() => {
+                removeClient(clientId);
+            }, 1000);
+        }
+
+        // Logout (para demonstração, adicionado ao avatar)
+        document.querySelector('.avatar').addEventListener('click', function() {
+            if (confirm('Deseja sair da sua conta?')) {
+                localStorage.removeItem('agendame_logged_in');
+                showLogin();
+
+                // Limpar campos de login
+                document.getElementById('email').value = '';
+                document.getElementById('password').value = '';
+            }
+        });
+    </script>
+</body>
+</html>

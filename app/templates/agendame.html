@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendame - Faça seu Agendamento</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #8A2BE2;
+            --primary-light: #a855f7;
+            --primary-dark: #7c3aed;
+            --dark-bg: #121212;
+            --darker-bg: #0a0a0a;
+            --card-dark: #1e1e1e;
+            --text-light: #e0e0e0;
+            --text-muted: #aaaaaa;
+            --user-msg-bg: #2d2d2d;
+            --bot-msg-bg: #2a1b3d;
+            --accent-color: #10b981;
+            --border-color: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Styles */
+        .header {
+            background-color: var(--darker-bg);
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            font-size: 28px;
+            color: var(--primary-color);
+        }
+
+        .logo h1 {
+            font-size: 24px;
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .business-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .business-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .business-type {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 30px 0;
+        }
+
+        .chat-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .chat-header h2 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: var(--text-light);
+        }
+
+        .chat-header p {
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+
+        /* Chat Messages */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: var(--card-dark);
+            border-radius: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-height: 500px;
+        }
+
+        .message {
+            display: flex;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .bot-message {
+            align-self: flex-start;
+        }
+
+        .user-message {
+            align-self: flex-end;
+        }
+
+        .message-content {
+            padding: 16px 20px;
+            border-radius: 18px;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .bot-message .message-content {
+            background-color: var(--bot-msg-bg);
+            border-top-left-radius: 4px;
+            color: var(--text-light);
+        }
+
+        .user-message .message-content {
+            background-color: var(--user-msg-bg);
+            border-top-right-radius: 4px;
+            color: var(--text-light);
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        /* Chat Input & Options */
+        .chat-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .option-btn {
+            background-color: var(--card-dark);
+            border: 1px solid var(--border-color);
+            color: var(--text-light);
+            padding: 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            font-size: 15px;
+        }
+
+        .option-btn:hover {
+            background-color: var(--user-msg-bg);
+            border-color: var(--primary-light);
+        }
+
+        .option-btn.selected {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .service-price {
+            float: right;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        /* Input Area */
+        .input-container {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .input-container.hidden {
+            display: none;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 16px 20px;
+            background-color: var(--card-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-light);
+            font-size: 16px;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .send-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0 24px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+        }
+
+        .send-btn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .send-btn:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+        }
+
+        /* Success Message */
+        .success-container {
+            background-color: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--accent-color);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .success-container.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .success-icon {
+            font-size: 48px;
+            color: var(--accent-color);
+            margin-bottom: 20px;
+        }
+
+        .success-container h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: var(--text-light);
+        }
+
+        .success-container p {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .appointment-details {
+            background-color: var(--card-dark);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .detail-label {
+            color: var(--text-muted);
+        }
+
+        .detail-value {
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .new-booking-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 25px;
+            transition: background-color 0.2s ease;
+        }
+
+        .new-booking-btn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .typing-indicator.show {
+            display: flex;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--text-muted);
+            border-radius: 50%;
+            animation: typingAnimation 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typingAnimation {
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+            40% { transform: translateY(-10px); opacity: 1; }
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .business-info {
+                align-items: flex-start;
+            }
+
+            .chat-messages {
+                max-height: 400px;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+
+            .chat-options {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            .chat-header h2 {
+                font-size: 24px;
+            }
+
+            .input-container {
+                flex-direction: column;
+            }
+
+            .send-btn {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container header-content">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <h1>Agendame</h1>
+            </div>
+
+            <div class="business-info">
+                <div class="business-name" id="businessName">Barbearia Estilo Clássico</div>
+                <div class="business-type" id="businessType">Barbearia & Salão Masculino</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="chat-container">
+            <div class="chat-header">
+                <h2>Agendamento Online</h2>
+                <p>Faça seu agendamento de forma rápida e fácil. Responda algumas perguntas e escolha o horário que melhor se encaixa na sua agenda.</p>
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="chat-messages" id="chatMessages">
+                <!-- Messages will be added here by JavaScript -->
+            </div>
+
+            <!-- Typing Indicator -->
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="input-container" id="inputContainer">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Digite sua resposta aqui..." autocomplete="off">
+                <button class="send-btn" id="sendBtn">Enviar</button>
+            </div>
+
+            <!-- Success Message -->
+            <div class="success-container" id="successContainer">
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3>Agendamento Confirmado!</h3>
+                <p>Seu horário foi reservado com sucesso. Você receberá uma confirmação por WhatsApp. Em caso de necessidade de cancelamento, entre em contato com pelo menos 2 horas de antecedência.</p>
+
+                <div class="appointment-details" id="appointmentDetails">
+                    <!-- Appointment details will be added here -->
+                </div>
+
+                <button class="new-booking-btn" id="newBookingBtn">
+                    <i class="fas fa-plus"></i> Fazer Novo Agendamento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dados da empresa (pode ser dinâmico no futuro)
+        const businessData = {
+            name: "Barbearia Estilo Clássico",
+            type: "Barbearia & Salão Masculino",
+            services: [
+                { id: 1, name: "Corte de Cabelo Masculino", price: 30.00 },
+                { id: 2, name: "Barba Completa", price: 20.00 },
+                { id: 3, name: "Corte + Barba", price: 45.00 },
+                { id: 4, name: "Hidratação Capilar", price: 25.00 },
+                { id: 5, name: "Tratamento para Barba", price: 35.00 },
+                { id: 6, name: "Pezinho", price: 15.00 }
+            ],
+            availableTimes: [
+                "09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00", "18:00"
+            ]
+        };
+
+        // Estado do chat
+        const chatState = {
+            step: 0, // 0 = nome, 1 = serviço, 2 = horário, 3 = finalizado
+            userName: "",
+            selectedService: null,
+            selectedTime: null,
+            appointmentId: null
+        };
+
+        // Elementos DOM
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const inputContainer = document.getElementById('inputContainer');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const successContainer = document.getElementById('successContainer');
+        const appointmentDetails = document.getElementById('appointmentDetails');
+        const newBookingBtn = document.getElementById('newBookingBtn');
+        const businessName = document.getElementById('businessName');
+        const businessType = document.getElementById('businessType');
+
+        // Inicializar a aplicação
+        document.addEventListener('DOMContentLoaded', function() {
+            // Configurar dados da empresa
+            businessName.textContent = businessData.name;
+            businessType.textContent = businessData.type;
+
+            // Iniciar o chat
+            startChat();
+
+            // Configurar eventos
+            sendBtn.addEventListener('click', handleSendMessage);
+            chatInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handleSendMessage();
+                }
+            });
+
+            newBookingBtn.addEventListener('click', resetChat);
+        });
+
+        // Iniciar o chat
+        function startChat() {
+            addMessageToChat("Olá! Bem-vindo ao sistema de agendamento da " + businessData.name + ".", "bot");
+
+            // Aguardar um pouco e enviar a primeira pergunta
+            setTimeout(() => {
+                askForName();
+            }, 800);
+        }
+
+        // Adicionar mensagem ao chat
+        function addMessageToChat(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+
+            const now = new Date();
+            const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+            messageDiv.innerHTML = `
+                <div class="message-content">${text}</div>
+                <div class="message-time">${timeString}</div>
+            `;
+
+            chatMessages.appendChild(messageDiv);
+
+            // Scroll para a última mensagem
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Mostrar indicador de digitação
+        function showTypingIndicator() {
+            typingIndicator.classList.add('show');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Esconder indicador de digitação
+        function hideTypingIndicator() {
+            typingIndicator.classList.remove('show');
+        }
+
+        // Perguntar o nome
+        function askForName() {
+            showTypingIndicator();
+
+            setTimeout(() => {
+                hideTypingIndicator();
+                addMessageToChat("Para começarmos, por favor, informe seu nome completo:", "bot");
+                chatState.step = 0;
+                chatInput.focus();
+            }, 1000);
+        }
+
+        // Perguntar o serviço
+        function askForService() {
+            showTypingIndicator();
+
+            setTimeout(() => {
+                hideTypingIndicator();
+                addMessageToChat("Ótimo, " + chatState.userName +! " Agora, qual serviço você gostaria de agendar?", "bot");
+
+                // Criar opções de serviços
+                const servicesHtml = businessData.services.map(service =>
+                    `<button class="option-btn" data-service-id="${service.id}">
+                        ${service.name} <span class="service-price">R$ ${service.price.toFixed(2)}</span>
+                    </button>`
+                ).join('');
+
+                addMessageToChat(`
+                    <div class="chat-options" id="serviceOptions">
+                        ${servicesHtml}
+                    </div>
+                `, "bot");
+
+                // Adicionar event listeners aos botões de serviço
+                setTimeout(() => {
+                    document.querySelectorAll('#serviceOptions .option-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const serviceId = parseInt(this.getAttribute('data-service-id'));
+                            selectService(serviceId);
+                        });
+                    });
+                }, 100);
+
+                chatState.step = 1;
+            }, 1000);
+        }
+
+        // Perguntar o horário
+        function askForTime() {
+            showTypingIndicator();
+
+            setTimeout(() => {
+                hideTypingIndicator();
+                const selectedService = businessData.services.find(s => s.id === chatState.selectedService);
+                addMessageToChat(`Perfeito! Você selecionou: <strong>${selectedService.name}</strong>. Agora escolha um horário disponível:`, "bot");
+
+                // Criar opções de horários
+                const timesHtml = businessData.availableTimes.map(time =>
+                    `<button class="option-btn" data-time="${time}">${time}</button>`
+                ).join('');
+
+                addMessageToChat(`
+                    <div class="chat-options" id="timeOptions">
+                        ${timesHtml}
+                    </div>
+                `, "bot");
+
+                // Adicionar event listeners aos botões de horário
+                setTimeout(() => {
+                    document.querySelectorAll('#timeOptions .option-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const time = this.getAttribute('data-time');
+                            selectTime(time);
+                        });
+                    });
+                }, 100);
+
+                chatState.step = 2;
+            }, 1000);
+        }
+
+        // Finalizar agendamento
+        function completeBooking() {
+            showTypingIndicator();
+
+            setTimeout(() => {
+                hideTypingIndicator();
+
+                // Gerar ID de agendamento
+                chatState.appointmentId = 'AG' + Date.now().toString().slice(-6);
+
+                addMessageToChat(`Agendamento confirmado! Um resumo do seu agendamento será exibido em instantes.`, "bot");
+
+                // Mostrar sucesso após um breve delay
+                setTimeout(() => {
+                    showSuccessMessage();
+                }, 1500);
+
+                chatState.step = 3;
+            }, 1000);
+        }
+
+        // Selecionar serviço
+        function selectService(serviceId) {
+            // Remover seleção anterior
+            document.querySelectorAll('#serviceOptions .option-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+
+            // Marcar como selecionado
+            document.querySelector(`#serviceOptions .option-btn[data-service-id="${serviceId}"]`).classList.add('selected');
+
+            const selectedService = businessData.services.find(s => s.id === serviceId);
+            chatState.selectedService = serviceId;
+
+            // Adicionar mensagem do usuário
+            addMessageToChat(selectedService.name, "user");
+
+            // Aguardar e perguntar horário
+            setTimeout(() => {
+                askForTime();
+            }, 800);
+        }
+
+        // Selecionar horário
+        function selectTime(time) {
+            // Remover seleção anterior
+            document.querySelectorAll('#timeOptions .option-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+
+            // Marcar como selecionado
+            document.querySelector(`#timeOptions .option-btn[data-time="${time}"]`).classList.add('selected');
+
+            chatState.selectedTime = time;
+
+            // Adicionar mensagem do usuário
+            addMessageToChat(time, "user");
+
+            // Aguardar e finalizar agendamento
+            setTimeout(() => {
+                completeBooking();
+            }, 800);
+        }
+
+        // Processar envio de mensagem
+        function handleSendMessage() {
+            const message = chatInput.value.trim();
+
+            if (!message) return;
+
+            // Adicionar mensagem do usuário ao chat
+            addMessageToChat(message, "user");
+
+            // Processar de acordo com o passo atual
+            if (chatState.step === 0) {
+                chatState.userName = message;
+                chatInput.value = "";
+
+                // Aguardar e perguntar serviço
+                setTimeout(() => {
+                    askForService();
+                }, 800);
+            }
+
+            // Limpar input
+            chatInput.value = "";
+        }
+
+        // Mostrar mensagem de sucesso
+        function showSuccessMessage() {
+            const selectedService = businessData.services.find(s => s.id === chatState.selectedService);
+
+            // Criar detalhes do agendamento
+            const detailsHtml = `
+                <div class="detail-row">
+                    <span class="detail-label">Código do Agendamento:</span>
+                    <span class="detail-value">${chatState.appointmentId}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Cliente:</span>
+                    <span class="detail-value">${chatState.userName}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Serviço:</span>
+                    <span class="detail-value">${selectedService.name}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Valor:</span>
+                    <span class="detail-value">R$ ${selectedService.price.toFixed(2)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Data e Horário:</span>
+                    <span class="detail-value">${formatNextAvailableDate()} às ${chatState.selectedTime}</span>
+                </div>
+            `;
+
+            appointmentDetails.innerHTML = detailsHtml;
+
+            // Esconder chat e mostrar sucesso
+            inputContainer.classList.add('hidden');
+            successContainer.classList.add('show');
+
+            // Scroll para o topo da seção de sucesso
+            successContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Formatar data do próximo horário disponível
+        function formatNextAvailableDate() {
+            const today = new Date();
+            const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+            const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+            // Para exemplo, vamos usar amanhã
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+
+            return `${days[tomorrow.getDay()]}, ${tomorrow.getDate()} de ${months[tomorrow.getMonth()]}`;
+        }
+
+        // Reiniciar o chat para novo agendamento
+        function resetChat() {
+            // Resetar estado
+            chatState.step = 0;
+            chatState.userName = "";
+            chatState.selectedService = null;
+            chatState.selectedTime = null;
+            chatState.appointmentId = null;
+
+            // Limpar mensagens
+            chatMessages.innerHTML = '';
+
+            // Esconder sucesso e mostrar input
+            successContainer.classList.remove('show');
+            inputContainer.classList.remove('hidden');
+
+            // Reiniciar chat
+            startChat();
+        }
+
+        // Função para simular um botão de voltar ao início (caso necessário)
+        function addBackButton() {
+            const backBtn = document.createElement('button');
+            backBtn.className = 'new-booking-btn';
+            backBtn.innerHTML = '<i class="fas fa-arrow-left"></i> Voltar ao Início';
+            backBtn.style.marginTop = '20px';
+            backBtn.addEventListener('click', resetChat);
+
+            // Adicionar ao chat se não estiver na tela de sucesso
+            if (!successContainer.classList.contains('show')) {
+                chatMessages.appendChild(backBtn);
+            }
+        }
+    </script>
+</body>
+</html>

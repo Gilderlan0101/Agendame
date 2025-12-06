@@ -1,0 +1,406 @@
+# Created by https://www.toptal.com/developers/gitignore/api/python,fastapi,sqlite,venv,dotenv
+# Edit at https://www.toptal.com/developers/gitignore?templates=python,fastapi,sqlite,venv,dotenv
+
+### dotenv ###
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.example
+.env.sample
+.env.template
+.env.*
+
+### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# C extensions
+*.so
+*.pyd
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+#   For a library or package, you might want to ignore these files since the code is
+#   intended to run in multiple environments; otherwise, check them in:
+.python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+#Pipfile.lock
+
+# poetry
+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+#   commonly ignored for libraries.
+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+#poetry.lock
+
+# pdm
+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+#pdm.lock
+#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
+#   in version control.
+#   https://pdm.fming.dev/#use-with-ide
+.pdm.toml
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+.idea_modules/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Eclipse
+.project
+.pydevproject
+.settings/
+
+# Visual Studio
+.vs/
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+system.log
+logs/
+log/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+g_turismo.db*
+database.db
+
+# Cache
+.cache/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+coverage/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+### FastAPI ###
+# FastAPI specific
+*.pyc
+__pycache__/
+
+# Uvicorn logs
+uvicorn.log
+*.sock
+
+# Hypercorn logs
+hypercorn.log
+
+# Development SSL certificates
+*.key
+*.pem
+*.crt
+
+# Test data
+test_data/
+fixtures/
+
+### SQLite ###
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.db3
+
+# SQLite temporary files
+*.db-*
+
+# SQLite write-ahead log
+*-wal
+*-shm
+
+### venv ###
+# Virtualenv
+# http://iamzed.com/2009/05/07/a-primer-on-virtualenv/
+[Bb]in
+[Ii]nclude
+[Ll]ib
+[Ll]ib64
+[Ll]ocal
+[Ss]cripts
+pyvenv.cfg
+pip-selfcheck.json
+Get-Pip.ps1
+.Python
+pip-delete-this-directory.txt
+
+# End of https://www.toptal.com/developers/gitignore/api/python,fastapi,sqlite,venv,dotenv
+
+# ============================================================================
+# 🔒 ARQUIVOS SENSÍVEIS - NÃO VERSIONAR 🔒
+# ============================================================================
+
+# Arquivos de configuração com credenciais
+config.py
+secrets.py
+credentials.py
+settings_local.py
+
+# Chaves e certificados
+*.key
+*.pem
+*.crt
+*.cer
+*.pfx
+*.p12
+
+# Arquivos de backup
+*.bak
+*.backup
+*.old
+
+# Arquivos temporários do sistema
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Arquivos de dump/export de banco de dados
+*.dump
+*.sql
+backup/
+dump/
+
+# Arquivos de mídia gerados pelo usuário
+uploads/
+media/
+static/uploads/
+user_content/
+
+# Arquivos de cache de templates
+.cache/
+.jinja2_cache/
+
+# Arquivos de sessão
+*.session
+*.session.*
+
+# Arquivos de lock específicos do projeto
+*.lock
+poetry.lock  # Descomente se não quiser versionar
+Pipfile.lock  # Descomente se não quiser versionar
+
+# ============================================================================
+# 📁 DIRETÓRIOS DO PROJETO ESPECÍFICOS
+# ============================================================================
+
+# Diretórios de build e distribuição
+build/
+dist/
+*.egg-info/
+
+# Diretórios de testes e cobertura
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Diretórios de documentação
+docs/_build/
+site/
+
+# Diretórios de IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ============================================================================
+# ⚠️ AVISO DE SEGURANÇA
+# ============================================================================
+
+# ANTES DE COMMITAR, VERIFIQUE:
+# 1. Nenhum arquivo .env ou variável sensível está sendo commitado
+# 2. Arquivos de banco de dados estão sendo ignorados
+# 3. Credenciais não estão hardcoded no código
+# 4. Chaves de API não estão expostas
+# 5. Certificados SSL não estão incluídos
+
+# Para verificar o que será commitado:
+# git status
+# git diff --cached
+
+# Para remover arquivos sensíveis acidentalmente commitados:
+# git rm --cached <arquivo>
+# Adicione o arquivo ao .gitignore
+# Commit novamente
