@@ -11,6 +11,7 @@
 .env.sample
 .env.template
 .env.*
+*agendame
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
