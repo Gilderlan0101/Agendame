@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any
+from typing import Any, Dict
 
 from dotenv import load_dotenv
 from tortoise import Tortoise
@@ -29,16 +29,23 @@ def get_database_config() -> Dict[str, Any]:
         db_name = os.getenv('DB_NAME_PROD', 'agendame_prod')
 
         # URL de conexão MySQL
-        db_url = f"mysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+        db_url = f'mysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}'
 
         engine = 'tortoise.backends.mysql'
 
         # Verificar credenciais necessárias
-        required_vars = ['DB_USER_PROD', 'DB_PASSWORD_PROD', 'DB_HOST_PROD', 'DB_NAME_PROD']
+        required_vars = [
+            'DB_USER_PROD',
+            'DB_PASSWORD_PROD',
+            'DB_HOST_PROD',
+            'DB_NAME_PROD',
+        ]
         missing = [var for var in required_vars if not os.getenv(var)]
 
         if missing:
-            print(f'[ERRO] Variáveis de ambiente faltando: {", ".join(missing)}')
+            print(
+                f'[ERRO] Variáveis de ambiente faltando: {", ".join(missing)}'
+            )
             raise ValueError(f'Variáveis de ambiente faltando: {missing}')
 
     else:  # DEVELOPMENT
@@ -53,7 +60,9 @@ def get_database_config() -> Dict[str, Any]:
         'connections': {
             'default': {
                 'engine': engine,
-                'credentials': {'database': db_name} if environment == 'PRODUCTION' else {'file_path': db_name}
+                'credentials': {'database': db_name}
+                if environment == 'PRODUCTION'
+                else {'file_path': db_name},
             }
         },
         'apps': {
@@ -80,7 +89,9 @@ TORTOISE_ORM = get_database_config()
 async def init_database() -> bool:
     """Inicializa o banco de dados com o Tortoise ORM."""
 
-    engine_name = TORTOISE_ORM['connections']['default']['engine'].split('.')[-1]
+    engine_name = TORTOISE_ORM['connections']['default']['engine'].split('.')[
+        -1
+    ]
     db_type = 'MySQL' if engine_name == 'mysql' else 'SQLite'
 
     print(f'🔧 Inicializando banco de dados: {db_type} ({engine_name})')

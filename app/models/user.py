@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from tortoise import fields, models
 
 
@@ -18,17 +19,19 @@ class User(models.Model):
     whatsapp = fields.CharField(max_length=20, null=True)
 
     # Configurações do salão
-    business_hours = fields.JSONField(default={
-        "monday": {"open": "09:00", "close": "18:00"},
-        "tuesday": {"open": "09:00", "close": "18:00"},
-        "wednesday": {"open": "09:00", "close": "18:00"},
-        "thursday": {"open": "09:00", "close": "18:00"},
-        "friday": {"open": "09:00", "close": "18:00"},
-        "saturday": {"open": "09:00", "close": "17:00"},
-        "sunday": {"open": None, "close": None}
-    })
+    business_hours = fields.JSONField(
+        default={
+            'monday': {'open': '09:00', 'close': '18:00'},
+            'tuesday': {'open': '09:00', 'close': '18:00'},
+            'wednesday': {'open': '09:00', 'close': '18:00'},
+            'thursday': {'open': '09:00', 'close': '18:00'},
+            'friday': {'open': '09:00', 'close': '18:00'},
+            'saturday': {'open': '09:00', 'close': '17:00'},
+            'sunday': {'open': None, 'close': None},
+        }
+    )
 
-    subscription_active = fields.BooleanField(default=False)
+    subscription_active = fields.BooleanField(default=True)
     subscription_start = fields.DatetimeField(null=True)
     subscription_end = fields.DatetimeField(null=True)
 
@@ -39,7 +42,7 @@ class User(models.Model):
         table = 'users'
 
     def __str__(self):
-        return f"User: {self.business_name} ({self.email})"
+        return f'User: {self.business_name} ({self.email})'
 
 
 class Client(models.Model):
@@ -65,7 +68,7 @@ class Client(models.Model):
         indexes = [('user_id', 'phone')]
 
     def __str__(self):
-        return f"Client: {self.full_name} ({self.phone})"
+        return f'Client: {self.full_name} ({self.phone})'
 
 
 class Service(models.Model):
@@ -90,7 +93,7 @@ class Service(models.Model):
         indexes = [('user_id', 'is_active')]
 
     def __str__(self):
-        return f"Service: {self.name} - R${self.price}"
+        return f'Service: {self.name} - R${self.price}'
 
 
 class Appointment(models.Model):
@@ -106,8 +109,12 @@ class Appointment(models.Model):
 
     id = fields.IntField(pk=True)
     user = fields.ForeignKeyField('models.User', related_name='appointments')
-    client = fields.ForeignKeyField('models.Client', related_name='appointments', null=True)
-    service = fields.ForeignKeyField('models.Service', related_name='appointments')
+    client = fields.ForeignKeyField(
+        'models.Client', related_name='appointments', null=True
+    )
+    service = fields.ForeignKeyField(
+        'models.Service', related_name='appointments'
+    )
 
     # Informações do agendamento
     appointment_date = fields.DateField()
@@ -118,7 +125,9 @@ class Appointment(models.Model):
     client_phone = fields.CharField(max_length=20)
 
     # Status e valores
-    status = fields.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled')
+    status = fields.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='scheduled'
+    )
     price = fields.DecimalField(max_digits=10, decimal_places=2)
 
     # WhatsApp integration
@@ -140,7 +149,7 @@ class Appointment(models.Model):
         ]
 
     def __str__(self):
-        return f"Appointment: {self.client_name} - {self.appointment_date} {self.appointment_time}"
+        return f'Appointment: {self.client_name} - {self.appointment_date} {self.appointment_time}'
 
 
 class BusinessSettings(models.Model):
@@ -151,8 +160,8 @@ class BusinessSettings(models.Model):
 
     # Configurações de WhatsApp
     whatsapp_message_template = fields.TextField(
-        default="Olá {client_name}! Seu horário no salão está chegando! "
-                "Você já pode vir para o seu {service_name}. Estamos te esperando!"
+        default='Olá {client_name}! Seu horário no salão está chegando! '
+        'Você já pode vir para o seu {service_name}. Estamos te esperando!'
     )
 
     # Configurações de agendamento
@@ -172,7 +181,7 @@ class BusinessSettings(models.Model):
 
     # Configurações de pagamento
     accept_online_payment = fields.BooleanField(default=False)
-    payment_methods = fields.JSONField(default=["dinheiro", "cartão", "pix"])
+    payment_methods = fields.JSONField(default=['dinheiro', 'cartão', 'pix'])
 
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
@@ -181,4 +190,4 @@ class BusinessSettings(models.Model):
         table = 'business_settings'
 
     def __str__(self):
-        return f"Settings for: {self.user.business_name}"
+        return f'Settings for: {self.user.business_name}'

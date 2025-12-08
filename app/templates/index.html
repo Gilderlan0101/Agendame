@@ -13,6 +13,8 @@
             --secondary-color: #f0f0f0;
             --accent-color: #10b981;
             --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
             --text-dark: #333;
             --text-light: #666;
             --text-white: #fff;
@@ -144,6 +146,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: var(--transition);
+            text-align: center;
         }
 
         .btn-primary {
@@ -171,6 +174,24 @@
 
         .btn-danger:hover {
             background-color: #dc2626;
+        }
+
+        .btn-warning {
+            background-color: var(--warning-color);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background-color: #d97706;
+        }
+
+        .btn-info {
+            background-color: var(--info-color);
+            color: white;
+        }
+
+        .btn-info:hover {
+            background-color: #2563eb;
         }
 
         /* Dashboard Styles */
@@ -232,8 +253,41 @@
             align-items: center;
             justify-content: center;
             font-weight: 600;
+            cursor: pointer;
         }
 
+        /* Tabs Navigation */
+        .tabs {
+            display: flex;
+            background-color: white;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 20px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            padding: 20px 30px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        /* Dashboard Content */
         .dashboard-content {
             padding: 30px 0;
         }
@@ -245,6 +299,9 @@
         .dashboard-title h1 {
             font-size: 28px;
             color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .dashboard-title p {
@@ -252,6 +309,7 @@
             margin-top: 5px;
         }
 
+        /* Stats Container */
         .stats-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -294,6 +352,14 @@
             background-color: var(--primary-color);
         }
 
+        .services-icon {
+            background-color: var(--info-color);
+        }
+
+        .appointments-icon {
+            background-color: var(--warning-color);
+        }
+
         .stat-info h3 {
             font-size: 14px;
             color: var(--text-light);
@@ -307,15 +373,26 @@
             color: var(--text-dark);
         }
 
-        .clients-container {
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Cards Container */
+        .cards-container {
             background-color: white;
             border-radius: 16px;
             padding: 0;
             box-shadow: var(--card-shadow);
             overflow: hidden;
+            margin-bottom: 30px;
         }
 
-        .clients-header {
+        .cards-header {
             padding: 24px;
             border-bottom: 1px solid var(--border-color);
             display: flex;
@@ -323,12 +400,15 @@
             align-items: center;
         }
 
-        .clients-header h2 {
+        .cards-header h2 {
             font-size: 20px;
             color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .clients-count {
+        .cards-count {
             background-color: var(--primary-light);
             color: white;
             padding: 4px 12px;
@@ -337,17 +417,19 @@
             font-size: 14px;
         }
 
+        /* Clients List */
         .clients-list {
             padding: 0;
         }
 
         .client-item {
             display: grid;
-            grid-template-columns: 2fr 2fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
             padding: 20px 24px;
             border-bottom: 1px solid var(--border-color);
             align-items: center;
             transition: var(--transition);
+            gap: 15px;
         }
 
         .client-item:hover {
@@ -363,14 +445,47 @@
             color: var(--text-dark);
         }
 
-        .client-service {
+        .client-phone {
             color: var(--text-light);
             font-weight: 500;
+        }
+
+        .client-service {
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        .client-date {
+            color: var(--text-light);
+            font-size: 14px;
         }
 
         .client-price {
             font-weight: 700;
             color: var(--primary-color);
+        }
+
+        .client-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .status-scheduled {
+            background-color: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .status-confirmed {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .status-completed {
+            background-color: #f0fdf4;
+            color: #15803d;
         }
 
         .client-actions {
@@ -405,65 +520,239 @@
             background-color: #25D366;
         }
 
-        .no-clients {
+        .action-edit {
+            background-color: var(--info-color);
+        }
+
+        /* Services List */
+        .services-list {
+            padding: 0;
+        }
+
+        .service-item {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            align-items: center;
+            transition: var(--transition);
+            gap: 15px;
+        }
+
+        .service-item:hover {
+            background-color: rgba(138, 43, 226, 0.03);
+        }
+
+        .service-name {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .service-price {
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .service-duration {
+            color: var(--text-light);
+        }
+
+        .service-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .status-active {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .status-inactive {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 20px;
+            color: var(--text-dark);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            padding: 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        /* Empty State */
+        .empty-state {
             padding: 60px 20px;
             text-align: center;
             color: var(--text-light);
         }
 
-        .no-clients i {
+        .empty-state i {
             font-size: 48px;
             margin-bottom: 20px;
             color: var(--border-color);
         }
 
-        .whatsapp-message {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background-color: #25D366;
-            color: white;
-            border-radius: 50px;
-            padding: 15px 25px;
-            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+        /* Loading Spinner */
+        .loading-spinner {
+            display: none;
+            justify-content: center;
+            padding: 60px;
+        }
+
+        .loading-spinner.show {
             display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--border-color);
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
             align-items: center;
             gap: 10px;
-            cursor: pointer;
-            z-index: 1000;
-            transition: var(--transition);
-            display: none;
         }
 
-        .whatsapp-message:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(37, 211, 102, 0.4);
+        .alert.show {
+            display: flex;
         }
 
-        .whatsapp-message i {
-            font-size: 24px;
+        .alert-success {
+            background-color: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
         }
 
-        .whatsapp-message span {
-            font-weight: 600;
+        .alert-error {
+            background-color: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
         }
 
         /* Responsive Styles */
-        @media (max-width: 992px) {
-            .stats-container {
+        @media (max-width: 1200px) {
+            .client-item,
+            .service-item {
                 grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .client-actions,
+            .service-actions {
+                justify-content: flex-start;
             }
         }
 
         @media (max-width: 768px) {
-            .client-item {
+            .stats-container {
                 grid-template-columns: 1fr;
-                gap: 15px;
-                padding: 20px;
             }
 
-            .client-actions {
-                justify-content: flex-start;
+            .tabs {
+                flex-direction: column;
+            }
+
+            .tab-btn {
+                padding: 15px;
+                text-align: left;
+                border-bottom: 1px solid var(--border-color);
+                border-left: 3px solid transparent;
+            }
+
+            .tab-btn.active {
+                border-left-color: var(--primary-color);
+                border-bottom-color: var(--border-color);
             }
 
             .login-box {
@@ -493,10 +782,12 @@
                 gap: 15px;
             }
 
-            .whatsapp-message {
-                bottom: 20px;
-                right: 20px;
-                padding: 12px 20px;
+            .quick-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
             }
         }
     </style>
@@ -510,7 +801,7 @@
                     <i class="fas fa-calendar-check"></i>
                 </div>
                 <h1>Agendame</h1>
-                <span>Agendamento automático para salões</span>
+                <span>Painel de administração</span>
             </div>
 
             <form id="loginForm">
@@ -541,236 +832,369 @@
                 </div>
 
                 <div class="user-info">
-                    <span>Admin</span>
-                    <div class="avatar">
+                    <span id="userName">Carregando...</span>
+                    <div class="avatar" id="logoutBtn" title="Sair">
                         <i class="fas fa-user"></i>
                     </div>
                 </div>
             </div>
         </header>
 
+        <!-- Tabs Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="dashboard">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </button>
+            <button class="tab-btn" data-tab="appointments">
+                <i class="fas fa-calendar-alt"></i> Agendamentos
+            </button>
+            <button class="tab-btn" data-tab="services">
+                <i class="fas fa-cut"></i> Serviços
+            </button>
+            <button class="tab-btn" data-tab="clients">
+                <i class="fas fa-users"></i> Clientes
+            </button>
+            <button class="tab-btn" data-tab="company">
+                <i class="fas fa-building"></i> Empresa
+            </button>
+        </div>
+
+        <!-- Dashboard Content -->
         <main class="dashboard-content">
             <div class="container">
-                <div class="dashboard-title">
-                    <h1>Painel de Agendamentos</h1>
-                    <p>Gerencie seus clientes e agendamentos</p>
+                <!-- Alert Messages -->
+                <div class="alert" id="alertMessage"></div>
+
+                <!-- Loading Spinner -->
+                <div class="loading-spinner" id="loadingSpinner">
+                    <div class="spinner"></div>
                 </div>
 
-                <div class="stats-container">
-                    <div class="stat-card">
-                        <div class="stat-icon revenue-icon">
-                            <i class="fas fa-dollar-sign"></i>
+                <!-- Dashboard Tab -->
+                <div class="tab-content active" id="dashboardTab">
+                    <div class="dashboard-title">
+                        <h1><i class="fas fa-tachometer-alt"></i> Painel de Controle</h1>
+                        <p>Bem-vindo ao seu painel de agendamentos</p>
+                    </div>
+
+                    <div class="quick-actions">
+                        <button class="btn btn-primary" onclick="openNewServiceModal()">
+                            <i class="fas fa-plus"></i> Novo Serviço
+                        </button>
+                        <button class="btn btn-success" onclick="openNewAppointmentModal()">
+                            <i class="fas fa-calendar-plus"></i> Novo Agendamento
+                        </button>
+                        <button class="btn btn-info" onclick="refreshData()">
+                            <i class="fas fa-sync-alt"></i> Atualizar Dados
+                        </button>
+                    </div>
+
+                    <div class="stats-container">
+                        <div class="stat-card">
+                            <div class="stat-icon revenue-icon">
+                                <i class="fas fa-dollar-sign"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>GANHO HOJE</h3>
+                                <div class="stat-value" id="todayRevenue">R$ 0,00</div>
+                            </div>
                         </div>
-                        <div class="stat-info">
-                            <h3>GANHO POTENCIAL</h3>
-                            <div class="stat-value" id="totalRevenue">R$ 730,00</div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon appointments-icon">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>AGENDAMENTOS HOJE</h3>
+                                <div class="stat-value" id="todayAppointments">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon clients-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>CLIENTES CADASTRADOS</h3>
+                                <div class="stat-value" id="totalClients">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon services-icon">
+                                <i class="fas fa-cut"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>SERVIÇOS ATIVOS</h3>
+                                <div class="stat-value" id="activeServices">0</div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="stat-card">
-                        <div class="stat-icon clients-icon">
-                            <i class="fas fa-users"></i>
+                    <!-- Próximos Agendamentos -->
+                    <div class="cards-container">
+                        <div class="cards-header">
+                            <h2><i class="fas fa-clock"></i> Próximos Agendamentos</h2>
+                            <div class="cards-count" id="nextAppointmentsCount">0</div>
                         </div>
-                        <div class="stat-info">
-                            <h3>CLIENTES EM ESPERA</h3>
-                            <div class="stat-value" id="clientsWaiting">5</div>
+                        <div class="clients-list" id="nextAppointmentsList">
+                            <!-- Agendamentos serão carregados aqui -->
                         </div>
                     </div>
                 </div>
 
-                <div class="clients-container">
-                    <div class="clients-header">
-                        <h2>Próximos Agendamentos</h2>
-                        <div class="clients-count" id="clientsCount">5 clientes</div>
+                <!-- Agendamentos Tab -->
+                <div class="tab-content" id="appointmentsTab">
+                    <div class="dashboard-title">
+                        <h1><i class="fas fa-calendar-alt"></i> Agendamentos</h1>
+                        <p>Gerencie todos os agendamentos da sua empresa</p>
                     </div>
 
-                    <div class="clients-list" id="clientsList">
-                        <!-- Clientes serão carregados aqui via JavaScript -->
+                    <div class="quick-actions">
+                        <button class="btn btn-success" onclick="openNewAppointmentModal()">
+                            <i class="fas fa-calendar-plus"></i> Novo Agendamento
+                        </button>
+                        <div class="form-group" style="margin: 0;">
+                            <input type="date" id="appointmentDateFilter" class="form-control" style="width: 200px;">
+                        </div>
+                    </div>
+
+                    <div class="cards-container">
+                        <div class="cards-header">
+                            <h2><i class="fas fa-list"></i> Todos os Agendamentos</h2>
+                            <div class="cards-count" id="allAppointmentsCount">0</div>
+                        </div>
+                        <div class="clients-list" id="allAppointmentsList">
+                            <!-- Todos os agendamentos serão carregados aqui -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Serviços Tab -->
+                <div class="tab-content" id="servicesTab">
+                    <div class="dashboard-title">
+                        <h1><i class="fas fa-cut"></i> Serviços</h1>
+                        <p>Gerencie os serviços oferecidos pela sua empresa</p>
+                    </div>
+
+                    <div class="quick-actions">
+                        <button class="btn btn-primary" onclick="openNewServiceModal()">
+                            <i class="fas fa-plus"></i> Novo Serviço
+                        </button>
+                    </div>
+
+                    <div class="cards-container">
+                        <div class="cards-header">
+                            <h2><i class="fas fa-cut"></i> Serviços Disponíveis</h2>
+                            <div class="cards-count" id="servicesCount">0</div>
+                        </div>
+                        <div class="services-list" id="servicesList">
+                            <!-- Serviços serão carregados aqui -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clientes Tab -->
+                <div class="tab-content" id="clientsTab">
+                    <div class="dashboard-title">
+                        <h1><i class="fas fa-users"></i> Clientes</h1>
+                        <p>Gerencie todos os clientes cadastrados</p>
+                    </div>
+
+                    <div class="cards-container">
+                        <div class="cards-header">
+                            <h2><i class="fas fa-users"></i> Clientes Cadastrados</h2>
+                            <div class="cards-count" id="clientsCount">0</div>
+                        </div>
+                        <div class="clients-list" id="clientsList">
+                            <!-- Clientes serão carregados aqui -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empresa Tab -->
+                <div class="tab-content" id="companyTab">
+                    <div class="dashboard-title">
+                        <h1><i class="fas fa-building"></i> Minha Empresa</h1>
+                        <p>Configure as informações da sua empresa</p>
+                    </div>
+
+                    <div class="cards-container">
+                        <div class="cards-header">
+                            <h2><i class="fas fa-info-circle"></i> Informações da Empresa</h2>
+                        </div>
+                        <div class="modal-body" style="border: none;">
+                            <div class="form-group">
+                                <label>Nome da Empresa</label>
+                                <input type="text" id="companyName" class="form-control" value="Carregando...">
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo de Negócio</label>
+                                <input type="text" id="companyType" class="form-control" value="Carregando...">
+                            </div>
+                            <div class="form-group">
+                                <label>Telefone</label>
+                                <input type="text" id="companyPhone" class="form-control" value="Carregando...">
+                            </div>
+                            <div class="form-group">
+                                <label>WhatsApp</label>
+                                <input type="text" id="companyWhatsApp" class="form-control" value="Carregando...">
+                            </div>
+                            <div class="form-group">
+                                <label>URL Personalizada</label>
+                                <div class="input-group">
+                                    <input type="text" id="companySlug" class="form-control" value="Carregando..." readonly>
+                                    <button class="btn btn-info" onclick="copyCompanyUrl()">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                                <small style="color: var(--text-light); margin-top: 5px; display: block;">
+                                    Compartilhe este link para seus clientes agendarem:
+                                    <span id="companyUrl">Carregando...</span>
+                                </small>
+                            </div>
+                            <button class="btn btn-primary" onclick="saveCompanyInfo()">
+                                <i class="fas fa-save"></i> Salvar Alterações
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
+    </div>
 
-        <div class="whatsapp-message" id="whatsappMessage">
-            <i class="fab fa-whatsapp"></i>
-            <span>Mensagem enviada com sucesso!</span>
+    <!-- Modal: Novo Serviço -->
+    <div class="modal" id="newServiceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-plus"></i> Novo Serviço</h3>
+                <button class="modal-close" onclick="closeModal('newServiceModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="newServiceForm">
+                    <div class="form-group">
+                        <label for="serviceName">Nome do Serviço *</label>
+                        <input type="text" id="serviceName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="serviceDescription">Descrição</label>
+                        <textarea id="serviceDescription" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="servicePrice">Preço (R$) *</label>
+                        <input type="number" id="servicePrice" class="form-control" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="serviceDuration">Duração (minutos) *</label>
+                        <input type="number" id="serviceDuration" class="form-control" min="5" value="60" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="serviceOrder">Ordem de Exibição</label>
+                        <input type="number" id="serviceOrder" class="form-control" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="serviceActive" checked> Serviço Ativo
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('newServiceModal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveNewService()">Salvar Serviço</button>
+            </div>
         </div>
     </div>
 
-    <script>
-        // Dados dos clientes
-        const clients = [
-            { id: 1, name: "João", service: "Corte Simples", price: 20, phone: "+5511999999999", status: "waiting" },
-            { id: 2, name: "Otavio", service: "Corte Simples", price: 20, phone: "+5511999999998", status: "waiting" },
-            { id: 3, name: "Maria", service: "Aplicação", price: 320, phone: "+5511999999997", status: "waiting" },
-            { id: 4, name: "Lucas", service: "Barba e Cabelo", price: 40, phone: "+5511999999996", status: "waiting" },
-            { id: 5, name: "Ana", service: "Manicure", price: 30, phone: "+5511999999995", status: "waiting" }
-        ];
-
-        // Elementos DOM
-        const loginPage = document.getElementById('loginPage');
-        const dashboardPage = document.getElementById('dashboardPage');
-        const loginForm = document.getElementById('loginForm');
-        const clientsList = document.getElementById('clientsList');
-        const totalRevenue = document.getElementById('totalRevenue');
-        const clientsWaiting = document.getElementById('clientsWaiting');
-        const clientsCount = document.getElementById('clientsCount');
-        const whatsappMessage = document.getElementById('whatsappMessage');
-
-        // Inicializar a aplicação
-        document.addEventListener('DOMContentLoaded', function() {
-            // Verificar se já está logado (para demonstração)
-            const isLoggedIn = localStorage.getItem('agendame_logged_in');
-
-            if (isLoggedIn === 'true') {
-                showDashboard();
-            } else {
-                showLogin();
-            }
-
-            // Carregar lista de clientes
-            renderClients();
-            updateStats();
-        });
-
-        // Mostrar página de login
-        function showLogin() {
-            loginPage.style.display = 'flex';
-            dashboardPage.style.display = 'none';
-        }
-
-        // Mostrar dashboard
-        function showDashboard() {
-            loginPage.style.display = 'none';
-            dashboardPage.style.display = 'block';
-        }
-
-        // Formulário de login
-        loginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            // Validação simples para demonstração
-            if (email && password) {
-                // Salvar login (para demonstração)
-                localStorage.setItem('agendame_logged_in', 'true');
-
-                // Mostrar dashboard
-                showDashboard();
-            } else {
-                alert('Por favor, preencha todos os campos!');
-            }
-        });
-
-        // Renderizar lista de clientes
-        function renderClients() {
-            clientsList.innerHTML = '';
-
-            if (clients.length === 0) {
-                clientsList.innerHTML = `
-                    <div class="no-clients">
-                        <i class="fas fa-user-clock"></i>
-                        <h3>Nenhum cliente em espera</h3>
-                        <p>Os agendamentos aparecerão aqui</p>
+    <!-- Modal: Novo Agendamento -->
+    <div class="modal" id="newAppointmentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-calendar-plus"></i> Novo Agendamento</h3>
+                <button class="modal-close" onclick="closeModal('newAppointmentModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="newAppointmentForm">
+                    <div class="form-group">
+                        <label for="appointmentClientName">Nome do Cliente *</label>
+                        <input type="text" id="appointmentClientName" class="form-control" required>
                     </div>
-                `;
-                return;
-            }
-
-            clients.forEach(client => {
-                const clientElement = document.createElement('div');
-                clientElement.className = 'client-item';
-                clientElement.innerHTML = `
-                    <div class="client-name">${client.name}</div>
-                    <div class="client-service">${client.service}</div>
-                    <div class="client-price">R$ ${client.price.toFixed(2)}</div>
-                    <div class="client-actions">
-                        <button class="action-btn action-remove" onclick="removeClient(${client.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                        <button class="action-btn action-whatsapp" onclick="sendWhatsAppMessage(${client.id})">
-                            <i class="fab fa-whatsapp"></i>
-                        </button>
+                    <div class="form-group">
+                        <label for="appointmentClientPhone">Telefone *</label>
+                        <input type="text" id="appointmentClientPhone" class="form-control" required>
                     </div>
-                `;
+                    <div class="form-group">
+                        <label for="appointmentService">Serviço *</label>
+                        <select id="appointmentService" class="form-control" required>
+                            <option value="">Selecione um serviço...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="appointmentDate">Data *</label>
+                        <input type="date" id="appointmentDate" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="appointmentTime">Horário *</label>
+                        <input type="time" id="appointmentTime" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="appointmentNotes">Observações</label>
+                        <textarea id="appointmentNotes" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('newAppointmentModal')">Cancelar</button>
+                <button class="btn btn-success" onclick="saveNewAppointment()">Salvar Agendamento</button>
+            </div>
+        </div>
+    </div>
 
-                clientsList.appendChild(clientElement);
-            });
-        }
+    <!-- Modal: Editar Serviço -->
+    <div class="modal" id="editServiceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Editar Serviço</h3>
+                <button class="modal-close" onclick="closeModal('editServiceModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editServiceForm">
+                    <input type="hidden" id="editServiceId">
+                    <div class="form-group">
+                        <label for="editServiceName">Nome do Serviço *</label>
+                        <input type="text" id="editServiceName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editServiceDescription">Descrição</label>
+                        <textarea id="editServiceDescription" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editServicePrice">Preço (R$) *</label>
+                        <input type="number" id="editServicePrice" class="form-control" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editServiceDuration">Duração (minutos) *</label>
+                        <input type="number" id="editServiceDuration" class="form-control" min="5" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editServiceOrder">Ordem de Exibição</label>
+                        <input type="number" id="editServiceOrder" class="form-control" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="editServiceActive"> Serviço Ativo
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('editServiceModal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveEditedService()">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
 
-        // Atualizar estatísticas
-        function updateStats() {
-            // Calcular ganho total
-            const total = clients.reduce((sum, client) => sum + client.price, 0);
-            totalRevenue.textContent = `R$ ${total.toFixed(2)}`;
+    <script src="{{url_for('static', path='home.js')}}" ></script>
 
-            // Atualizar contagem de clientes
-            clientsWaiting.textContent = clients.length;
-            clientsCount.textContent = `${clients.length} ${clients.length === 1 ? 'cliente' : 'clientes'}`;
-        }
-
-        // Remover cliente
-        function removeClient(clientId) {
-            if (confirm('Tem certeza que deseja remover este cliente da lista?')) {
-                const index = clients.findIndex(client => client.id === clientId);
-
-                if (index !== -1) {
-                    clients.splice(index, 1);
-                    renderClients();
-                    updateStats();
-                }
-            }
-        }
-
-        // Enviar mensagem WhatsApp
-        function sendWhatsAppMessage(clientId) {
-            const client = clients.find(client => client.id === clientId);
-
-            if (!client) return;
-
-            // Mensagem padrão amigável
-            const message = `Olá ${client.name}! ☺️ Seu horário no salão está chegando! Você já pode vir para o seu ${client.service}. Estamos te esperando!`;
-
-            // Codificar a mensagem para URL
-            const encodedMessage = encodeURIComponent(message);
-
-            // Criar link do WhatsApp
-            const whatsappURL = `https://wa.me/${client.phone}?text=${encodedMessage}`;
-
-            // Abrir WhatsApp
-            window.open(whatsappURL, '_blank');
-
-            // Mostrar notificação
-            whatsappMessage.style.display = 'flex';
-
-            // Esconder notificação após 3 segundos
-            setTimeout(() => {
-                whatsappMessage.style.display = 'none';
-            }, 3000);
-
-            // Atualizar status do cliente
-            client.status = 'notified';
-
-            // Para demonstração, removeremos o cliente após notificação
-            // Em um sistema real, você pode querer mudar apenas o status
-            setTimeout(() => {
-                removeClient(clientId);
-            }, 1000);
-        }
-
-        // Logout (para demonstração, adicionado ao avatar)
-        document.querySelector('.avatar').addEventListener('click', function() {
-            if (confirm('Deseja sair da sua conta?')) {
-                localStorage.removeItem('agendame_logged_in');
-                showLogin();
-
-                // Limpar campos de login
-                document.getElementById('email').value = '';
-                document.getElementById('password').value = '';
-            }
-        });
-    </script>
 </body>
 </html>

@@ -4,11 +4,8 @@ from fastapi import HTTPException, status
 
 from app.models.user import User
 from app.service.jwt.auth import get_hashed_password, verify_password
-from app.utils.hashed_email import (
-    create_email_search_hash,
-    get_hashed_email,
-    verify_email,
-)
+from app.utils.hashed_email import (create_email_search_hash, get_hashed_email,
+                                    verify_email)
 
 
 async def create_account(target):
@@ -21,7 +18,6 @@ async def create_account(target):
                 detail='Fill in all the fields.',
             )
 
-
         user = await User.filter(email=target.get('email')).exists()
         if user:
             raise HTTPException(
@@ -29,9 +25,7 @@ async def create_account(target):
                 detail='This email address is already registered.',
             )
 
-
         if isinstance(target, dict):
-
 
             await User.create(
                 username=target.get('username'),
@@ -41,8 +35,8 @@ async def create_account(target):
                 business_type=target.get('business_type'),
                 phone=target.get('phone'),
                 whatsapp=target.get('whatsapp'),
+                business_slug=target.get('business_slug'),
             )
-
 
             return {
                 'username': target.get('username'),

@@ -4,7 +4,9 @@ from pydantic import BaseModel
 class LoginResponse(BaseModel):
     """Resposta ao concluir login"""
 
-    id: int                                     # Id do usuario
-    username: str                         # email
-    access_token: str                   # Token gerado
-    refresh_token: str                  # Token regeneração
+    access_token: str
+    token_type: str
+    user_id: int
+    username: str
+    email: str
+    business_name: str

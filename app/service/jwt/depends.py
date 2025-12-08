@@ -7,14 +7,10 @@ from pydantic import BaseModel, EmailStr, ValidationError
 from app.models.user import User
 from app.service.jwt.jwt_decode_token import DecodeToken
 
-
-
 OAUTH2_SCHEME = OAuth2PasswordBearer(
     tokenUrl='auth/login',
     scheme_name='JWT Bearer',
 )
-
-
 
 
 class SystemUser(BaseModel):
@@ -32,7 +28,7 @@ async def get_current_user(
 ) -> SystemUser:
 
     token_data = DecodeToken(str(token))
-    user_id:int = token_data.data.sub
+    user_id: int = token_data.data.sub
 
     search_target_user = await User.get_or_none(id=user_id)
 
@@ -49,5 +45,3 @@ async def get_current_user(
         status_code=status.HTTP_404_NOT_FOUND,
         detail='Usuário não encontrado após validação do token.',
     )
-
-
