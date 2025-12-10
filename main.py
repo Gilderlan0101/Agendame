@@ -11,8 +11,6 @@ from tortoise import Tortoise
 
 from app.database.init_database import TORTOISE_ORM, print_database_info
 
-# Não é necessário mais imports aqui, pois a classe Server gerencia isso internamente.
-
 # Deve apontar para /home/admin-lan/saas/Agendame
 BASE_DIR = Path(__file__).resolve().parent
 # Diretório de arquivos estáticos
@@ -21,7 +19,6 @@ static_dir = BASE_DIR / 'app' / 'static'
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ... (código existente do lifespan) ...
     """Gerencia o ciclo de vinda da aplicação"""
     load_dotenv()
 
@@ -35,7 +32,6 @@ async def lifespan(app: FastAPI):
 
 
 class Server:
-    # ... (código existente da classe Server __init__ e setup_middlewares) ...
     """Serve: Class Responsavel por comfigura o servidor"""
 
     def __init__(self) -> None:
@@ -45,15 +41,36 @@ class Server:
             lifespan=lifespan,
         )
 
-        self.app.mount(
-            '/static', StaticFiles(directory=str(static_dir)), name='static'
-        )
+        # Configurar tipos MIME manualmente
+        self.setup_static_files()
 
         self.setup_middlewares()
         self.start_routes()
 
+    def setup_static_files(self):
+        """Configura arquivos estáticos com tipos MIME corretos"""
+
+        # Criar uma instância personalizada de StaticFiles
+        static_files = StaticFiles(
+            directory=str(static_dir), html=True, check_dir=True
+        )
+
+        # Montar os arquivos estáticos
+        self.app.mount('/static', static_files, name='static')
+
+        # Adicionar middleware para corrigir tipos MIME
+        @self.app.middleware('http')
+        async def add_mime_type_header(request: Request, call_next):
+            response = await call_next(request)
+            if request.url.path.endswith('.js'):
+                response.headers['Content-Type'] = 'text/javascript'
+            elif request.url.path.endswith('.css'):
+                response.headers['Content-Type'] = 'text/css'
+            elif request.url.path.endswith('.html'):
+                response.headers['Content-Type'] = 'text/html'
+            return response
+
     def setup_middlewares(self):
-        # ... (código existente do setup_middlewares) ...
         """Configuração dos Middlewares, incluindo o CORS"""
 
         origins = ['*']
@@ -62,12 +79,9 @@ class Server:
         self.app.add_middleware(
             CORSMiddleware,
             allow_origins=origins,
-            allow_credentials=True,  # True para permitir cookies/cabeçalhos de autorização
-            # CORREÇÃO 1: O parâmetro correto é 'allow_methods' (no plural)
-            allow_methods=[
-                '*'
-            ],  # Permite todos os métodos (GET, POST, PUT, DELETE, etc.)
-            allow_headers=['*'],  # Permite todos os cabeçalhos
+            allow_credentials=True,
+            allow_methods=['*'],
+            allow_headers=['*'],
         )
 
     def start_routes(self):
@@ -76,8 +90,8 @@ class Server:
         todas as rotas. Registre aqui.
         """
 
-        from app.routes.login import router as login_api_router
-        from app.routes.login import router_login as login_html_router
+        from app.routes.auth.login import router as login_api_router
+        from app.routes.auth.login import router_login as login_html_router
 
         # Inclui o roteador da API (POST /auth/login)
         self.app.include_router(login_api_router)
@@ -85,7 +99,7 @@ class Server:
         # Inclui o roteador da página HTML (GET /)
         self.app.include_router(login_html_router)
 
-        from app.routes.register import router as register
+        from app.routes.auth.register import router as register
 
         self.app.include_router(register)
 
@@ -109,11 +123,17 @@ class Server:
         self.app.include_router(adm_services)
 
         # remove um serviço da lista de serviços
-        from app.routes.agendame_company.remove_or_upgrad_service import router as remove_service
+        from app.routes.agendame_company.remove_or_upgrad_service import \
+            router as remove_service
+
         self.app.include_router(remove_service)
 
+        from app.routes.agendame_company.appointments import \
+            router as appointments
+
+        self.app.include_router(appointments)
+
     def run(self, host='0.0.0.0', port=8000):
-        # ... (código existente do run) ...
         """run: Responsavel por inicia o servidor"""
         uvicorn.run(
             'main:app',

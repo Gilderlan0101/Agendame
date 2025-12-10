@@ -7,8 +7,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.controllers.auth_login import checking_account
 from app.schemas.auth.schemas_login import LoginResponse
+from app.service.auth.auth_login import checking_account
 from app.service.jwt.depends import SystemUser, get_current_user
 
 router = APIRouter(tags=['Autenticação'], prefix='/auth')
@@ -16,7 +16,7 @@ router_login = APIRouter(tags=['Autenticação'])
 
 # BASE_DIR é o diretório do projeto (Agendame/)
 BASE_DIR = (
-    Path(__file__).resolve().parent.parent.parent
+    Path(__file__).resolve().parent.parent.parent.parent
 )  # Isso vai para /home/admin-lan/saas/Agendame
 print(f'BASE_DIR: {BASE_DIR}')
 

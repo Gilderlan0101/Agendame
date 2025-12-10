@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
 
-from app.controllers.auth_register import create_account
 from app.schemas.auth.schemas_register import CrateUser
+from app.service.auth.auth_register import create_account
 from app.service.jwt.depends import SystemUser, get_current_user
 
 router = APIRouter(tags=['Autenticação'], prefix='/auth')

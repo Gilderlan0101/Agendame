@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -13,10 +14,13 @@ router = APIRouter(tags=['Agendame-company'])
 @router.get('/agendame/services', response_model=List[ServiceResponse])
 async def get_my_services(
     current_user: SystemUser = Depends(get_current_user),
-    active_only: bool = False,
+    active_only: Optional[bool] = Query(
+        False, description='Filtrar apenas serviços ativos'
+    ),
 ):
     """
     Lista todos os serviços da empresa do usuário logado.
+    Retorna um array de serviços diretamente (o JS espera array direto).
     """
     try:
         user = await User.get_or_none(id=current_user.id)
@@ -26,17 +30,39 @@ async def get_my_services(
                 detail='Usuário não encontrado',
             )
 
+        # Construir query
         query = Service.filter(user=user)
 
         if active_only:
             query = query.filter(is_active=True)
 
+        # Buscar serviços ordenados
         services = await query.order_by('order', 'name').all()
 
-        if not services:
-            return []
+        # Formatar resposta para o JS
+        services_data = []
+        for service in services:
+            services_data.append(
+                {
+                    'id': service.id,
+                    'name': service.name,
+                    'description': service.description,
+                    'price': str(service.price)
+                    if service.price
+                    else '0.00',  # Convert Decimal to string
+                    'duration_minutes': service.duration_minutes,
+                    'order': service.order,
+                    'is_active': service.is_active,
+                    'created_at': service.created_at.isoformat()
+                    if service.created_at
+                    else None,
+                    'updated_at': service.updated_at.isoformat()
+                    if service.updated_at
+                    else None,
+                }
+            )
 
-        return services
+        return services_data
 
     except HTTPException:
         raise
@@ -44,7 +70,7 @@ async def get_my_services(
         print(f'Erro ao listar serviços: {str(e)}')
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Erro interno ao listar serviços',
+            detail=f'Erro interno ao listar serviços: {str(e)}',
         )
 
 
@@ -59,6 +85,7 @@ async def get_clients(
 ):
     """
     Busca todos os clientes da empresa do usuário logado.
+    Retorna { "clients": [...] } como o JS espera.
     """
     try:
         user = await User.get_or_none(id=current_user.id)
@@ -82,7 +109,7 @@ async def get_clients(
         # Aplicar paginação
         clients = await query.offset(offset).limit(limit).all()
 
-        # Buscar dados adicionais para cada cliente
+        # Formatar resposta para o JS
         clients_data = []
         for client in clients:
             # Contar agendamentos deste cliente
@@ -90,15 +117,17 @@ async def get_clients(
                 user=user, client=client
             ).count()
 
-            # Buscar último serviço agendado
+            # Buscar último serviço agendado usando select_related para carregar o serviço
             last_appointment = (
                 await Appointment.filter(user=user, client=client)
+                .select_related('service')  # Carrega o serviço relacionado
                 .order_by('-appointment_date', '-appointment_time')
                 .first()
             )
 
             last_service = None
             if last_appointment and last_appointment.service:
+                # CORREÇÃO: Acessar o objeto service e depois seu atributo name
                 last_service = last_appointment.service.name
 
             clients_data.append(
@@ -107,7 +136,7 @@ async def get_clients(
                     'full_name': client.full_name,
                     'phone': client.phone,
                     'total_appointments': total_appointments,
-                    'last_service': last_service,
+                    'last_service': last_service,  # Agora é uma string com o nome do serviço
                     'created_at': client.created_at.isoformat()
                     if client.created_at
                     else None,
@@ -133,26 +162,12 @@ async def get_clients(
         )
 
 
-@router.get('/appointments')
-async def get_appointments(
+@router.get('/dashboard/stats')
+async def get_dashboard_stats(
     current_user: SystemUser = Depends(get_current_user),
-    date_filter: Optional[str] = Query(
-        None, alias='date', description='Data no formato YYYY-MM-DD'
-    ),
-    status_filter: Optional[str] = Query(
-        None, alias='status', description='Filtrar por status'
-    ),
-    limit: int = Query(100, ge=1, le=200, description='Limite de resultados'),
-    offset: int = Query(0, ge=0, description='Offset para paginação'),
 ):
     """
-    Busca agendamentos da empresa do usuário logado.
-
-    Parâmetros:
-    - date: Filtrar por data específica (YYYY-MM-DD)
-    - status: Filtrar por status (scheduled, confirmed, completed, cancelled, no_show)
-    - limit: Limite de resultados por página
-    - offset: Offset para paginação
+    Retorna estatísticas para o dashboard.
     """
     try:
         user = await User.get_or_none(id=current_user.id)
@@ -162,103 +177,75 @@ async def get_appointments(
                 detail='Usuário não encontrado',
             )
 
-        # Construir query base
-        query = Appointment.filter(user=user)
+        today = date.today()
 
-        # Filtrar por data se fornecida
-        if date_filter:
-            try:
-                filter_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
-                query = query.filter(appointment_date=filter_date)
-            except ValueError:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail='Formato de data inválido. Use YYYY-MM-DD',
-                )
+        # Estatísticas básicas
+        total_services = await Service.filter(
+            user=user, is_active=True
+        ).count()
+        total_clients = await Client.filter(user=user, is_active=True).count()
 
-        # Filtrar por status se fornecido
-        if status_filter:
-            if status_filter not in [
-                'scheduled',
-                'confirmed',
-                'completed',
-                'cancelled',
-                'no_show',
-            ]:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail='Status inválido. Use: scheduled, confirmed, completed, cancelled, no_show',
-                )
-            query = query.filter(status=status_filter)
-
-        # Contar total
-        total_count = await query.count()
-
-        # Buscar com paginação e ordenação
-        appointments = (
-            await query.order_by('appointment_date', 'appointment_time')
-            .offset(offset)
-            .limit(limit)
+        # Agendamentos de hoje
+        today_appointments = (
+            await Appointment.filter(
+                user=user,
+                appointment_date=today,
+                status__in=['scheduled', 'confirmed'],
+            )
+            .select_related('service', 'client')
             .all()
         )
 
-        # Formatar resposta
-        appointments_data = []
-        for appointment in appointments:
-            # Buscar dados do serviço
-            service_name = 'Serviço não encontrado'
-            if appointment.service:
-                service_name = appointment.service.name
+        today_revenue = sum(
+            float(app.price) for app in today_appointments if app.price
+        )
 
-            # Buscar dados do cliente (se existir registro)
-            client_name = appointment.client_name
-            client_phone = appointment.client_phone
-            if appointment.client:
-                client_name = appointment.client.full_name
-                client_phone = appointment.client.phone
+        # Próximos agendamentos (hoje e futuro)
+        upcoming_appointments = (
+            await Appointment.filter(
+                user=user,
+                appointment_date__gte=today,
+                status__in=['scheduled', 'confirmed'],
+            )
+            .select_related('service', 'client')
+            .order_by('appointment_date', 'appointment_time')
+            .limit(10)
+            .all()
+        )
 
-            appointments_data.append(
+        upcoming_data = []
+        for app in upcoming_appointments:
+            # CORREÇÃO: Usar select_related para carregar service e client
+            service_name = app.service.name if app.service else 'Serviço'
+            client_name = (
+                app.client.full_name if app.client else app.client_name
+            )
+
+            upcoming_data.append(
                 {
-                    'id': appointment.id,
-                    'client_id': appointment.client_id,
+                    'id': app.id,
                     'client_name': client_name,
-                    'client_phone': client_phone,
-                    'service_id': appointment.service_id,
                     'service_name': service_name,
-                    'appointment_date': appointment.appointment_date.isoformat()
-                    if appointment.appointment_date
-                    else None,
-                    'appointment_time': appointment.appointment_time,
-                    'price': float(appointment.price)
-                    if appointment.price
-                    else 0,
-                    'status': appointment.status,
-                    'status_display': dict(appointment.STATUS_CHOICES).get(
-                        appointment.status, appointment.status
-                    ),
-                    'notes': appointment.notes,
-                    'whatsapp_sent': appointment.whatsapp_sent,
-                    'created_at': appointment.created_at.isoformat()
-                    if appointment.created_at
-                    else None,
+                    'appointment_date': app.appointment_date.isoformat(),
+                    'appointment_time': app.appointment_time,
+                    'price': float(app.price) if app.price else 0.0,
                 }
             )
 
         return {
-            'appointments': appointments_data,
-            'pagination': {
-                'total': total_count,
-                'limit': limit,
-                'offset': offset,
-                'has_more': (offset + len(appointments)) < total_count,
+            'stats': {
+                'total_services': total_services,
+                'total_clients': total_clients,
+                'today_appointments': len(today_appointments),
+                'today_revenue': today_revenue,
+                'upcoming_appointments': len(upcoming_appointments),
             },
+            'upcoming_appointments': upcoming_data,
         }
 
-    except HTTPException:
-        raise
     except Exception as e:
-        print(f'Erro ao buscar agendamentos: {str(e)}')
+        print(f'Erro ao buscar estatísticas: {str(e)}')
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Erro interno ao buscar agendamentos: {str(e)}',
+            detail=f'Erro interno ao buscar estatísticas: {str(e)}',
         )

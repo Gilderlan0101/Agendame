@@ -1,69 +1,21 @@
 from datetime import datetime
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.models.user import Service, User
+from app.schemas.agendame.register_service import (ServiceCreate,
+                                                   ServiceResponse)
 from app.service.jwt.depends import SystemUser, get_current_user
 
 router = APIRouter(tags=['Agendame-company'])
 
-
-from decimal import Decimal
-from typing import Optional
-
-from pydantic import BaseModel, Field, validator
-
-
-class ServiceResponse(BaseModel):
-    """Schema para resposta de serviço"""
-
-    id: int
-    name: str
-    description: Optional[str]
-    price: Decimal
-    duration_minutes: int
-    order: int
-    is_active: bool
-    created_at: str
-    updated_at: str
-
-    class Config:
-        from_attributes = True
-
-
-# Schemas
-class ServiceCreate(BaseModel):
-    """Schema para criação de serviço"""
-
-    name: str = Field(..., min_length=3, max_length=200)
-    description: Optional[str] = Field(None, max_length=500)
-    price: Decimal = Field(..., gt=0, le=10000)
-    duration_minutes: int = Field(60, ge=5, le=240)
-    order: int = Field(0, ge=0)
-    is_active: bool = Field(True)
-
-    @validator('price')
-    def validate_price(cls, v):
-        return round(v, 2)
-
-    class Config:
-        schema_extra = {
-            'example': {
-                'name': 'Corte Masculino',
-                'description': 'Corte de cabelo masculino com tesoura e máquina',
-                'price': 35.00,
-                'duration_minutes': 45,
-                'order': 1,
-                'is_active': True,
-            }
-        }
+# TODO: Refatora mais tarde
 
 
 @router.post(
     '/agendame/register/service',
     response_model=ServiceResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def register_service(
     service_data: ServiceCreate,
@@ -105,8 +57,26 @@ async def register_service(
             is_active=service_data.is_active,
         )
 
-        # Retornar o serviço criado
-        return ServiceResponse.from_orm(service)
+        # Retornar o serviço criado no formato que o JS espera
+        return {
+            'status': 'success',
+            'message': 'Serviço cadastrado com sucesso!',
+            'service': {
+                'id': service.id,
+                'name': service.name,
+                'description': service.description,
+                'price': str(service.price),  # Converter Decimal para string
+                'duration_minutes': service.duration_minutes,
+                'order': service.order,
+                'is_active': service.is_active,
+                'created_at': service.created_at.isoformat()
+                if service.created_at
+                else None,
+                'updated_at': service.updated_at.isoformat()
+                if service.updated_at
+                else None,
+            },
+        }
 
     except HTTPException:
         raise
@@ -114,5 +84,5 @@ async def register_service(
         print(f'Erro ao criar serviço: {str(e)}')
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Erro interno ao criar serviço',
+            detail=f'Erro interno ao criar serviço: {str(e)}',
         )
