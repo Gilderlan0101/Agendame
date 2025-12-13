@@ -14,7 +14,7 @@ import {
     loadServices
 } from './services.js';
 import { openNewAppointmentModal, saveNewAppointment } from './modals.js';
-import { cancelAppointment, loadAppointments } from './appointments.js';
+import { loadAppointments } from './appointments.js';
 import { sendWhatsAppReminder, sendWhatsAppToClient } from './whatsapp.js';
 import {
     saveCompanyInfo,
@@ -172,7 +172,6 @@ window.activateService = activateService;
 window.deactivateService = deactivateService;
 window.openNewAppointmentModal = openNewAppointmentModal;
 window.saveNewAppointment = saveNewAppointment;
-window.cancelAppointment = cancelAppointment;
 window.sendWhatsAppReminder = sendWhatsAppReminder;
 window.sendWhatsAppToClient = sendWhatsAppToClient;
 window.saveCompanyInfo = saveCompanyInfo;

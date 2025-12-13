@@ -9,7 +9,7 @@ export async function loadServices() {
     try {
         // Usar a rota de serviços da empresa
         if (appState.companySlug) {
-            const response = await fetch(`/agendame/${appState.companySlug}/services`, {
+            const response = await fetch(`/agendame/services`, {
                 headers: {
                     'Authorization': `Bearer ${appState.token}`
                 }

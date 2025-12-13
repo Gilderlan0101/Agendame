@@ -1,56 +1,94 @@
 import { appState } from './appState.js';
 import { allAppointmentsCount, allAppointmentsList } from './domElements.js';
-import { setLoading, showAlert, formatDate, formatPhone } from './utils.js';
+import { setLoading, showAlert } from './utils.js';
 
-// Carregar todos os agendamentos (GET com query parameters)
+// Funções auxiliares
+function formatDate(dateString) {
+    if (!dateString) return '';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('pt-BR');
+    } catch (e) {
+        return dateString;
+    }
+}
+
+function formatPhone(phone) {
+    if (!phone) return 'Não informado';
+    // Remove caracteres não numéricos
+    const cleaned = phone.toString().replace(/\D/g, '');
+
+    if (cleaned.length === 11) {
+        return `(${cleaned.substring(0,2)}) ${cleaned.substring(2,7)}-${cleaned.substring(7)}`;
+    } else if (cleaned.length === 10) {
+        return `(${cleaned.substring(0,2)}) ${cleaned.substring(2,6)}-${cleaned.substring(6)}`;
+    }
+    return phone;
+}
+
+// Carregar todos os agendamentos
 export async function loadAppointments(date = null, isDashboard = false) {
     setLoading(true);
 
     try {
-        // Construir query parameters de acordo com o schema AppointmentsToday
-        const params = new URLSearchParams();
-
         // Data é obrigatória - usar data atual se não fornecida
         const useDate = date || new Date().toISOString().split('T')[0];
-        params.append('date', useDate);
 
-        // Status opcional
-        params.append('status', 'scheduled');
+        // Preparar dados para a requisição
+        const requestData = {
+            date: useDate,
+            offset: 0,
+            limit: 100,
+            // status: 'scheduled' // Descomente se quiser filtrar por status específico
+        };
 
-        // Offset é obrigatório (tem default no schema)
-        params.append('offset', '0');
-
-        // Limit é opcional (tem default no schema)
-        params.append('limit', '100');
-
-        const url = `/appointments?${params.toString()}`;
-
-        const response = await fetch(url, {
-            method: 'GET',
+        const response = await fetch('/appointments', {
+            method: 'POST',
             headers: {
                 'Authorization': `Bearer ${appState.token}`,
+                'Content-Type': 'application/json',
                 'Accept': 'application/json'
-            }
+            },
+            body: JSON.stringify(requestData)
         });
 
         if (response.ok) {
             const data = await response.json();
+            console.log('Dados recebidos da API:', data);
 
             if (isDashboard) {
                 // Para dashboard, usar apenas agendamentos de hoje
                 const today = new Date().toISOString().split('T')[0];
                 appState.todayAppointments = (data.appointments || []).filter(
-                    app => app.appointment_date && app.appointment_date.startsWith(today)
+                    app => app.appointment_date && app.appointment_date.includes(today)
                 );
+
+                // Se estiver no dashboard, renderize os agendamentos de hoje
+                if (allAppointmentsList) {
+                    renderAppointments(appState.todayAppointments, allAppointmentsList, true);
+                }
             } else {
+                // Para a lista completa
                 appState.appointments = data.appointments || [];
-                allAppointmentsCount.textContent = data.pagination?.total || appState.appointments.length;
-                renderAppointments(appState.appointments, allAppointmentsList, false);
+                appState.pagination = data.pagination || {};
+
+                if (allAppointmentsCount) {
+                    allAppointmentsCount.textContent = data.pagination?.total || appState.appointments.length;
+                }
+                if (allAppointmentsList) {
+                    renderAppointments(appState.appointments, allAppointmentsList, false);
+                }
             }
             return data;
         } else {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || 'Erro ao carregar agendamentos');
+            let errorMessage = 'Erro ao carregar agendamentos';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorMessage;
+            } catch (e) {
+                errorMessage = `Erro ${response.status}: ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
         }
 
     } catch (error) {
@@ -58,12 +96,15 @@ export async function loadAppointments(date = null, isDashboard = false) {
         showAlert(error.message || 'Erro ao carregar agendamentos', 'error');
 
         // Mostrar estado vazio se houver erro
-        if (!isDashboard) {
+        if (allAppointmentsList) {
             allAppointmentsList.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-calendar-times"></i>
                     <h3>Erro ao carregar agendamentos</h3>
                     <p>${error.message || 'Não foi possível carregar os agendamentos'}</p>
+                    <button class="btn btn-primary" onclick="window.loadAppointments()">
+                        Tentar novamente
+                    </button>
                 </div>
             `;
         }
@@ -73,7 +114,7 @@ export async function loadAppointments(date = null, isDashboard = false) {
     }
 }
 
-// Renderizar agendamentos
+// Renderizar agendamentos - CORRIGIDO
 export function renderAppointments(appointments, container, isCompact = true) {
     if (!container) return;
 
@@ -89,50 +130,107 @@ export function renderAppointments(appointments, container, isCompact = true) {
     }
 
     container.innerHTML = appointments.map(app => {
-        const statusClass = `status-${app.status || 'scheduled'}`;
-        const statusText = app.status === 'scheduled' ? 'Agendado' :
-                         app.status === 'confirmed' ? 'Confirmado' :
-                         app.status === 'completed' ? 'Concluído' :
-                         app.status === 'cancelled' ? 'Cancelado' :
-                         app.status === 'no_show' ? 'Não Compareceu' : 'Agendado';
+        // Garantir que temos valores válidos
+        const appId = app.id || 0;
+        const status = app.status || 'scheduled';
+        const statusClass = `status-${status}`;
+
+        // Texto do status
+        let statusText = 'Agendado';
+        switch(status) {
+            case 'confirmed': statusText = 'Confirmado'; break;
+            case 'completed': statusText = 'Concluído'; break;
+            case 'cancelled': statusText = 'Cancelado'; break;
+            case 'no_show': statusText = 'Não Compareceu'; break;
+            default: statusText = 'Agendado';
+        }
 
         const price = parseFloat(app.price) || 0;
-        const date = app.appointment_date ? formatDate(app.appointment_date) : '';
-        const time = app.appointment_time || '';
-        const clientName = app.client_name || app.client_full_name || 'Cliente';
-        const serviceName = app.service_name || 'Serviço';
+        const date = app.appointment_date ? formatDate(app.appointment_date) : 'Data não informada';
+        const time = app.appointment_time || 'Horário não informado';
+        const clientName = app.client_name || app.client_full_name || 'Cliente não informado';
+        const serviceName = app.service_name || 'Serviço não informado';
         const clientPhone = app.client_phone || '';
+        const notes = app.notes || '';
+        const whatsappSent = app.whatsapp_sent || false;
 
-        // Formatar preço com vírgula para combinar com o HTML
-        const formattedPrice = price.toFixed(2).replace('.', ',');
+        // Formatar preço
+        const formattedPrice = price.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        // Escapar caracteres especiais para o onclick
+        const safeClientPhone = clientPhone.toString().replace(/'/g, "\\'");
+        const safeClientName = clientName.toString().replace(/'/g, "\\'");
+        const safeServiceName = serviceName.toString().replace(/'/g, "\\'");
+
+        // Função para criar mensagem padrão do WhatsApp
+        const createWhatsAppMessage = () => {
+            const message = encodeURIComponent(
+                `Olá ${clientName}! Lembrete do seu agendamento:\n` +
+                `📅 Data: ${date}\n` +
+                `⏰ Horário: ${time}\n` +
+                `💇 Serviço: ${serviceName}\n` +
+                `💰 Valor: R$ ${formattedPrice}\n\n` +
+                `Por favor, confirme sua presença.`
+            );
+            return message;
+        };
 
         if (isCompact) {
             return `
-                <div class="client-item">
-                    <div class="client-name">${clientName}</div>
-                    <div class="client-service">${serviceName}</div>
-                    <div class="client-date">${date} ${time}</div>
-                    <div class="client-price">R$ ${formattedPrice}</div>
-                    <div class="client-status ${statusClass}">${statusText}</div>
+                <div class="client-item" data-appointment-id="${appId}">
+                    <div class="client-info">
+                        <div class="client-name">${clientName}</div>
+                        <div class="client-service">${serviceName}</div>
+                        <div class="client-details">
+                            <span class="client-date"><i class="far fa-calendar"></i> ${date}</span>
+                            <span class="client-time"><i class="far fa-clock"></i> ${time}</span>
+                            <span class="client-price"><i class="fas fa-money-bill-wave"></i> R$ ${formattedPrice}</span>
+                        </div>
+                    </div>
                     <div class="client-actions">
-                        <button class="action-btn action-whatsapp" onclick="sendWhatsAppReminder(${app.id}, '${clientPhone}')">
+                        <span class="client-status ${statusClass}">${statusText}</span>
+                        ${clientPhone ? `
+                        <button class="action-btn action-whatsapp ${whatsappSent ? 'whatsapp-sent' : ''}"
+                                onclick="sendWhatsAppReminder(${appId}, '${safeClientPhone}', '${safeClientName}', '${date}', '${time}', '${safeServiceName}', ${price})"
+                                title="${whatsappSent ? 'Lembrete já enviado' : 'Enviar lembrete por WhatsApp'}">
                             <i class="fab fa-whatsapp"></i>
+                            ${whatsappSent ? '<span class="whatsapp-check">✓</span>' : ''}
                         </button>
+                        ` : ''}
                     </div>
                 </div>
             `;
         } else {
             return `
-                <div class="client-item">
-                    <div class="client-name">${clientName}</div>
-                    <div class="client-phone">${formatPhone(clientPhone)}</div>
-                    <div class="client-service">${serviceName}</div>
-                    <div class="client-date">${date} ${time}</div>
-                    <div class="client-price">R$ ${formattedPrice}</div>
-                    <div class="client-status ${statusClass}">${statusText}</div>
+                <div class="client-item" data-appointment-id="${appId}">
+                    <div class="client-info">
+                        <div class="client-name">${clientName}</div>
+                        <div class="client-service">${serviceName}</div>
+                        <div class="client-details">
+                            <span class="client-phone"><i class="fas fa-phone"></i> ${formatPhone(clientPhone)}</span>
+                            <span class="client-date"><i class="far fa-calendar"></i> ${date}</span>
+                            <span class="client-time"><i class="far fa-clock"></i> ${time}</span>
+                            <span class="client-price"><i class="fas fa-money-bill-wave"></i> R$ ${formattedPrice}</span>
+                            ${notes ? `<span class="client-notes"><i class="fas fa-sticky-note"></i> ${notes}</span>` : ''}
+                        </div>
+                    </div>
                     <div class="client-actions">
-                        <button class="action-btn action-whatsapp" onclick="sendWhatsAppReminder(${app.id}, '${clientPhone}')">
+                        <span class="client-status ${statusClass}">${statusText}</span>
+                        ${clientPhone ? `
+                        <button class="action-btn action-whatsapp ${whatsappSent ? 'whatsapp-sent' : ''}"
+                                onclick="sendWhatsAppReminder(${appId}, '${safeClientPhone}', '${safeClientName}', '${date}', '${time}', '${safeServiceName}', ${price})"
+                                title="${whatsappSent ? 'Lembrete já enviado' : 'Enviar lembrete por WhatsApp'}">
                             <i class="fab fa-whatsapp"></i>
+                            ${whatsappSent ? '<span class="whatsapp-check">✓</span>' : ''}
+                        </button>
+                        ` : ''}
+                        <button class="action-btn action-view"
+                                onclick="viewAppointmentDetails(${appId})"
+                                title="Ver detalhes">
+                            <i class="fas fa-eye"></i>
                         </button>
                     </div>
                 </div>
@@ -146,47 +244,46 @@ export function getAppointmentById(appointmentId) {
     if (!appState.appointments || appState.appointments.length === 0) {
         return null;
     }
-
     return appState.appointments.find(app => app.id === parseInt(appointmentId));
 }
 
-// Buscar agendamentos com filtros avançados (GET com query parameters)
+// Buscar agendamentos com filtros
 export async function searchAppointments(filters = {}) {
     setLoading(true);
 
     try {
-        // Construir query parameters
-        const params = new URLSearchParams();
+        const requestData = {
+            date: filters.date || new Date().toISOString().split('T')[0],
+            offset: filters.offset || 0,
+            limit: filters.limit || 100
+        };
 
-        // Data é obrigatória
-        params.append('date', filters.date || new Date().toISOString().split('T')[0]);
+        // Adicionar status apenas se especificado
+        if (filters.status && filters.status !== 'all') {
+            requestData.status = filters.status;
+        }
 
-        // Status opcional
-        if (filters.status) params.append('status', filters.status);
-        else params.append('status', 'scheduled');
-
-        // Offset é obrigatório
-        params.append('offset', filters.offset || '0');
-
-        // Limit opcional
-        if (filters.limit) params.append('limit', filters.limit);
-        else params.append('limit', '100');
-
-        const url = `/appointments?${params.toString()}`;
-
-        const response = await fetch(url, {
-            method: 'GET',
+        const response = await fetch('/appointments', {
+            method: 'POST',
             headers: {
                 'Authorization': `Bearer ${appState.token}`,
+                'Content-Type': 'application/json',
                 'Accept': 'application/json'
-            }
+            },
+            body: JSON.stringify(requestData)
         });
 
         if (response.ok) {
             const data = await response.json();
             appState.appointments = data.appointments || [];
-            allAppointmentsCount.textContent = data.pagination?.total || appState.appointments.length;
-            renderAppointments(appState.appointments, allAppointmentsList, false);
+            appState.pagination = data.pagination || {};
+
+            if (allAppointmentsCount) {
+                allAppointmentsCount.textContent = data.pagination?.total || appState.appointments.length;
+            }
+            if (allAppointmentsList) {
+                renderAppointments(appState.appointments, allAppointmentsList, false);
+            }
             return data;
         } else {
             const errorData = await response.json().catch(() => ({}));
@@ -201,116 +298,224 @@ export async function searchAppointments(filters = {}) {
     }
 }
 
-/*
-// TODO: POST - Criar novo agendamento
-export async function createNewAppointment(appointmentData) {
-    setLoading(true);
+// Função para enviar lembrete por WhatsApp - MELHORADA
+export function sendWhatsAppReminder(appointmentId, phone, clientName, date = '', time = '', serviceName = '', price = 0) {
+    if (!phone) {
+        showAlert('Número de telefone não disponível', 'warning');
+        return;
+    }
 
-    try {
-        const response = await fetch('/appointments', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${appState.token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(appointmentData)
-        });
+    // Remove todos os não números do telefone
+    const cleanPhone = phone.toString().replace(/\D/g, '');
 
-        if (response.ok) {
-            const data = await response.json();
-            showAlert('Agendamento criado com sucesso!', 'success');
+    // Verifica se é um número brasileiro
+    if (cleanPhone.length >= 10 && cleanPhone.length <= 11) {
+        // Criar mensagem personalizada
+        const message = encodeURIComponent(
+            `Olá ${clientName}! Lembrete do seu agendamento:\n\n` +
+            `📅 *Data:* ${date || 'Não informada'}\n` +
+            `⏰ *Horário:* ${time || 'Não informado'}\n` +
+            `💇 *Serviço:* ${serviceName || 'Não informado'}\n` +
+            `💰 *Valor:* R$ ${price.toLocaleString('pt-BR', {minimumFractionDigits: 2})}\n\n` +
+            `Por favor, confirme sua presença.`
+        );
 
-            // Recarregar agendamentos
-            await loadAppointments();
+        // Criar URL do WhatsApp com mensagem pré-preenchida
+        const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${message}`;
 
-            return data;
-        } else {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Erro ao criar agendamento');
-        }
-    } catch (error) {
-        console.error('Erro ao criar agendamento:', error);
-        showAlert(error.message || 'Erro ao criar agendamento', 'error');
-        return null;
-    } finally {
-        setLoading(false);
+        // Abrir em nova aba
+        window.open(whatsappUrl, '_blank');
+
+        // Opcional: marcar como enviado no sistema
+        markWhatsAppAsSent(appointmentId);
+
+        showAlert('Mensagem pronta para envio! O WhatsApp será aberto.', 'success');
+    } else {
+        showAlert('Número de telefone inválido. Precisa ter 10 ou 11 dígitos.', 'error');
     }
 }
 
-// TODO: POST - Atualizar agendamento
-export async function updateAppointment(appointmentId, appointmentData) {
-    setLoading(true);
-
+// Marcar WhatsApp como enviado (mock - você precisa implementar a API)
+async function markWhatsAppAsSent(appointmentId) {
     try {
-        const response = await fetch(`/appointments/${appointmentId}`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${appState.token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(appointmentData)
-        });
+        // Aqui você faria uma requisição para sua API
+        // await fetch(`/appointments/${appointmentId}/whatsapp`, {
+        //     method: 'POST',
+        //     headers: {
+        //         'Authorization': `Bearer ${appState.token}`,
+        //         'Content-Type': 'application/json'
+        //     }
+        // });
 
-        if (response.ok) {
-            const data = await response.json();
-            showAlert('Agendamento atualizado com sucesso!', 'success');
-
-            // Recarregar agendamentos
-            await loadAppointments();
-
-            return data;
-        } else {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Erro ao atualizar agendamento');
+        // Atualizar localmente
+        const appointment = getAppointmentById(appointmentId);
+        if (appointment) {
+            appointment.whatsapp_sent = true;
         }
     } catch (error) {
-        console.error('Erro ao atualizar agendamento:', error);
-        showAlert(error.message || 'Erro ao atualizar agendamento', 'error');
-        return null;
-    } finally {
-        setLoading(false);
+        console.error('Erro ao marcar WhatsApp como enviado:', error);
     }
 }
 
-// TODO: POST - Deletar agendamento
-export async function deleteAppointment(appointmentId) {
-    if (!confirm('Tem certeza que deseja excluir este agendamento permanentemente?')) return;
-
-    setLoading(true);
-
-    try {
-        const response = await fetch(`/appointments/${appointmentId}`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${appState.token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ action: 'delete' })
-        });
-
-        if (response.ok) {
-            showAlert('Agendamento excluído com sucesso!', 'success');
-
-            // Recarregar agendamentos
-            await loadAppointments();
-
-            return true;
-        } else {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Erro ao excluir agendamento');
-        }
-    } catch (error) {
-        console.error('Erro ao excluir agendamento:', error);
-        showAlert(error.message || 'Erro ao excluir agendamento', 'error');
-        return false;
-    } finally {
-        setLoading(false);
+// Ver detalhes do agendamento - MELHORADA
+export function viewAppointmentDetails(appointmentId) {
+    const appointment = getAppointmentById(appointmentId);
+    if (!appointment) {
+        showAlert('Agendamento não encontrado', 'error');
+        return;
     }
+
+    // Formatar os dados para exibição
+    const detailsHTML = `
+        <div class="appointment-details">
+            <h3><i class="fas fa-calendar-check"></i> Detalhes do Agendamento</h3>
+
+            <div class="detail-row">
+                <strong>Cliente:</strong>
+                <span>${appointment.client_name || 'Não informado'}</span>
+            </div>
+
+            <div class="detail-row">
+                <strong>Telefone:</strong>
+                <span>${formatPhone(appointment.client_phone || '')}</span>
+            </div>
+
+            <div class="detail-row">
+                <strong>Serviço:</strong>
+                <span>${appointment.service_name || 'Não informado'}</span>
+            </div>
+
+            <div class="detail-row">
+                <strong>Data:</strong>
+                <span>${formatDate(appointment.appointment_date || '')}</span>
+            </div>
+
+            <div class="detail-row">
+                <strong>Horário:</strong>
+                <span>${appointment.appointment_time || 'Não informado'}</span>
+            </div>
+
+            <div class="detail-row">
+                <strong>Valor:</strong>
+                <span>R$ ${(parseFloat(appointment.price) || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+            </div>
+
+            <div class="detail-row">
+                <strong>Status:</strong>
+                <span class="status-${appointment.status || 'scheduled'}">
+                    ${appointment.status === 'scheduled' ? 'Agendado' :
+                      appointment.status === 'confirmed' ? 'Confirmado' :
+                      appointment.status === 'completed' ? 'Concluído' :
+                      appointment.status === 'cancelled' ? 'Cancelado' :
+                      appointment.status === 'no_show' ? 'Não Compareceu' : 'Agendado'}
+                </span>
+            </div>
+
+            ${appointment.notes ? `
+            <div class="detail-row">
+                <strong>Observações:</strong>
+                <span>${appointment.notes}</span>
+            </div>
+            ` : ''}
+
+            <div class="detail-row">
+                <strong>WhatsApp:</strong>
+                <span>${appointment.whatsapp_sent ? '✅ Enviado' : '❌ Não enviado'}</span>
+            </div>
+
+            <div class="detail-row">
+                <strong>Criado em:</strong>
+                <span>${new Date(appointment.created_at || '').toLocaleString('pt-BR')}</span>
+            </div>
+        </div>
+    `;
+
+    // Usar um modal ou alerta customizado
+    showModal('Detalhes do Agendamento', detailsHTML);
 }
-*/
+
+// Função para mostrar modal (simples)
+function showModal(title, content) {
+    // Criar overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+
+    // Criar modal
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-header">
+            <h3>${title}</h3>
+            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+        </div>
+        <div class="modal-body">
+            ${content}
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Fechar</button>
+        </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
+
+// Função para recarregar agendamentos
+export function reloadAppointments() {
+    return loadAppointments();
+}
+
+// Filtrar agendamentos localmente
+export function filterLocalAppointments(filters) {
+    if (!appState.appointments || appState.appointments.length === 0) {
+        return [];
+    }
+
+    let filtered = [...appState.appointments];
+
+    // Filtrar por status
+    if (filters.status && filters.status !== 'all') {
+        filtered = filtered.filter(app => app.status === filters.status);
+    }
+
+    // Filtrar por data
+    if (filters.date) {
+        const filterDate = new Date(filters.date).toISOString().split('T')[0];
+        filtered = filtered.filter(app => {
+            if (!app.appointment_date) return false;
+            const appDate = new Date(app.appointment_date).toISOString().split('T')[0];
+            return appDate === filterDate;
+        });
+    }
+
+    // Filtrar por nome do cliente
+    if (filters.clientName) {
+        const searchTerm = filters.clientName.toLowerCase();
+        filtered = filtered.filter(app => {
+            const name = (app.client_name || '').toLowerCase();
+            const fullName = (app.client_full_name || '').toLowerCase();
+            return name.includes(searchTerm) || fullName.includes(searchTerm);
+        });
+    }
+
+    // Filtrar por serviço
+    if (filters.serviceName) {
+        const searchTerm = filters.serviceName.toLowerCase();
+        filtered = filtered.filter(app =>
+            (app.service_name || '').toLowerCase().includes(searchTerm)
+        );
+    }
+
+    return filtered;
+}
 
 // Exportar funções para o escopo global
 window.loadAppointments = loadAppointments;
 window.renderAppointments = renderAppointments;
 window.getAppointmentById = getAppointmentById;
 window.searchAppointments = searchAppointments;
+window.sendWhatsAppReminder = sendWhatsAppReminder;
+window.viewAppointmentDetails = viewAppointmentDetails;
+window.reloadAppointments = reloadAppointments;
+window.filterLocalAppointments = filterLocalAppointments;
+window.showModal = showModal;
