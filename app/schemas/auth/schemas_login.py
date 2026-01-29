@@ -10,3 +10,4 @@ class LoginResponse(BaseModel):
     username: str
     email: str
     business_name: str
+    slog: str

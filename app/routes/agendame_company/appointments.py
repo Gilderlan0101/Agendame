@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from typing import Dict, Any
 
 from app.controllers.agendame.appointments import search_for_appointments
-from app.schemas.agendame.schemas_appointments import AppointmentsToday
+from app.schemas.agendame.appointments import AppointmentsToday
 from app.service.jwt.depends import SystemUser, get_current_user
 
 router = APIRouter(tags=['Agendame-company'])
@@ -18,24 +18,30 @@ async def get_appointments(
     Retorna { "appointments": [...] } como o JS espera.
     """
 
-    search = await search_for_appointments(schema=dict(schema), company_id=current_user.id)
+    search = await search_for_appointments(
+        schema=schema.model_dump(),   # pydantic v2 safe
+        company_id=current_user.id
+    )
 
-    # Se search_for_appointments retornar None ou vazio
+    # Se vier vazio ou None
     if not search:
-        # Retorna uma estrutura vazia mas válida
         return {
             "appointments": [],
             "pagination": {
                 "total": 0,
                 "limit": schema.limit or 100,
-                "offset": schema.offset,
+                "offset": schema.offset or 0,
                 "has_more": False
             }
         }
 
-    # Certifica-se que search é um dicionário
+    # Garante contrato consistente
     if isinstance(search, dict):
         return search
-    else:
-        # Se for outra coisa, converte para dict
-        return dict(search) if hasattr(search, '__dict__') else {"appointments": [], "pagination": {}}
+
+    # fallback defensivo
+    return (
+        dict(search)
+        if hasattr(search, "__dict__")
+        else {"appointments": [], "pagination": {}}
+    )

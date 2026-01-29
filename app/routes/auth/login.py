@@ -43,7 +43,7 @@ async def get_current_user_info(
     return current_user
 
 
-@router_login.get('/agandame/login', response_class=HTMLResponse)
+@router_login.get('/agendame/login', response_class=HTMLResponse)
 async def get_login_page(request: Request):
     """Exibe a página HTML da landpage."""
     return templates.TemplateResponse('index.html', {'request': request})

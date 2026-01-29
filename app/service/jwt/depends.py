@@ -16,9 +16,13 @@ OAUTH2_SCHEME = OAuth2PasswordBearer(
 class SystemUser(BaseModel):
     id: int
     username: str
+
     email: EmailStr
     photo: Optional[str] = None
     status: bool = True
+    phone: str
+    name: str
+    slug: str
 
     model_config = {'from_attributes': True}
 
@@ -37,6 +41,9 @@ async def get_current_user(
             id=search_target_user.id,
             username=search_target_user.username,
             email=search_target_user.email,
+            phone= search_target_user.phone,
+            name=search_target_user.business_name,
+            slug=search_target_user.business_slug
         )
 
         return system_user_data

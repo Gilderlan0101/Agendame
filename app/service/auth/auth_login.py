@@ -46,6 +46,7 @@ async def checking_account(target: Dict[str, Any]):
             username=user.username,
             email=user.email,
             business_name=user.business_name,
+            slog=user.business_slug
         )
 
     except HTTPException:

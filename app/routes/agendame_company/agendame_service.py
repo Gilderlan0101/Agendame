@@ -5,13 +5,14 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.models.user import Appointment, Client, Service, User
-from app.schemas.agendame.response_service_agendame import ServiceResponse
+from app.schemas.agendame.response_service_agendame import ServiceListResponse
+
 from app.service.jwt.depends import SystemUser, get_current_user
 
 router = APIRouter(tags=['Agendame-company'])
 
 
-@router.get('/agendame/services', response_model=List[ServiceResponse])
+@router.get('/agendame/services', response_model=List[ServiceListResponse])
 async def get_my_services(
     current_user: SystemUser = Depends(get_current_user),
     active_only: Optional[bool] = Query(
