@@ -112,7 +112,7 @@ export async function saveEditedService() {
     const serviceDuration = parseInt(document.getElementById('editServiceDuration').value);
     const serviceOrder = parseInt(document.getElementById('editServiceOrder').value);
     const serviceActive = document.getElementById('editServiceActive').checked;
-
+    console.log("REQUEST DATA:", requestData);
     if (!serviceName || !servicePrice || !serviceDuration) {
         showAlert('Preencha todos os campos obrigatórios', 'error');
         return;
@@ -120,17 +120,18 @@ export async function saveEditedService() {
 
     setLoading(true);
 
+
     try {
         // Criar objeto com os nomes de campo que o backend espera
-        const requestData = {
-            service_id: parseInt(serviceId),
-            service_name: serviceName,
+       const requestData = {
+            name: serviceName,
             description: serviceDescription,
             price: servicePrice.toString(),
             duration_minutes: serviceDuration,
             order: serviceOrder,
             is_active: serviceActive
         };
+
 
         // Remover campos vazios ou undefined
         Object.keys(requestData).forEach(key => {

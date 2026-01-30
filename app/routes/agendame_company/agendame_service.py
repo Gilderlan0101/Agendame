@@ -4,75 +4,47 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.controllers.agendame.services import Services
 from app.models.user import Appointment, Client, Service, User
-from app.schemas.agendame.response_service_agendame import ServiceListResponse
-
+from app.schemas.agendame.response_service_agendame import ServiceItem
+from app.schemas.agendame.upgrade_service import UpdateServices
 from app.service.jwt.depends import SystemUser, get_current_user
 
 router = APIRouter(tags=['Agendame-company'])
 
 
-@router.get('/agendame/services', response_model=List[ServiceListResponse])
+@router.get('/agendame/services', response_model=List[ServiceItem])
 async def get_my_services(
     current_user: SystemUser = Depends(get_current_user),
-    active_only: Optional[bool] = Query(
-        False, description='Filtrar apenas serviços ativos'
-    ),
 ):
-    """
-    Lista todos os serviços da empresa do usuário logado.
-    Retorna um array de serviços diretamente (o JS espera array direto).
-    """
-    try:
-        user = await User.get_or_none(id=current_user.id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Usuário não encontrado',
-            )
+    service_domain = Services(target_company_id=current_user.id)
+    return await service_domain.get_services()
 
-        # Construir query
-        query = Service.filter(user=user)
 
-        if active_only:
-            query = query.filter(is_active=True)
+@router.delete('/agendame/remove/service/{service_id}', status_code=200)
+async def remove_service(
+    service_id: int, current_user: SystemUser = Depends(get_current_user)
+):
+    target_service = Services(target_company_id=current_user.id)
+    return await target_service.remove_one_service(
+        target_service_id=service_id
+    )
 
-        # Buscar serviços ordenados
-        services = await query.order_by('order', 'name').all()
 
-        # Formatar resposta para o JS
-        services_data = []
-        for service in services:
-            services_data.append(
-                {
-                    'id': service.id,
-                    'name': service.name,
-                    'description': service.description,
-                    'price': str(service.price)
-                    if service.price
-                    else '0.00',  # Convert Decimal to string
-                    'duration_minutes': service.duration_minutes,
-                    'order': service.order,
-                    'is_active': service.is_active,
-                    'created_at': service.created_at.isoformat()
-                    if service.created_at
-                    else None,
-                    'updated_at': service.updated_at.isoformat()
-                    if service.updated_at
-                    else None,
-                }
-            )
+@router.put("/agendame/update/service/{service_id}", status_code=200)
+async def upgrade_service(
+    service_id: int,
+    schemas_update: UpdateServices,
+    current_user: SystemUser = Depends(get_current_user),
+):
 
-        return services_data
+    target_service = Services(target_company_id=current_user.id)
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f'Erro ao listar serviços: {str(e)}')
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Erro interno ao listar serviços: {str(e)}',
-        )
+    return await target_service.upgrade_service(
+        target_service_id=service_id,
+        schemas=schemas_update
+    )
+
 
 
 @router.get('/clients')

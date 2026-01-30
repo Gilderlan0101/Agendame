@@ -7,8 +7,8 @@ from passlib.context import CryptContext
 load_dotenv()
 
 EMAIL_CONTEXT = CryptContext(
-    schemes=[os.getenv("EMAIL_HASH_SCHEME", "bcrypt")],
-    deprecated=os.getenv("EMAIL_HASH_DEPRECATED", "auto"),
+    schemes=[os.getenv('EMAIL_HASH_SCHEME', 'bcrypt')],
+    deprecated=os.getenv('EMAIL_HASH_DEPRECATED', 'auto'),
 )
 
 
@@ -27,4 +27,4 @@ def create_email_search_hash(email: str) -> str:
     Hash determinístico para busca/indexação (SHA-256).
     Não é para autenticação, apenas lookup.
     """
-    return hashlib.sha256(email.lower().encode("utf-8")).hexdigest()
+    return hashlib.sha256(email.lower().encode('utf-8')).hexdigest()

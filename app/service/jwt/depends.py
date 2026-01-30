@@ -41,9 +41,9 @@ async def get_current_user(
             id=search_target_user.id,
             username=search_target_user.username,
             email=search_target_user.email,
-            phone= search_target_user.phone,
+            phone=search_target_user.phone,
             name=search_target_user.business_name,
-            slug=search_target_user.business_slug
+            slug=search_target_user.business_slug,
         )
 
         return system_user_data

@@ -1,5 +1,6 @@
+from typing import Any, Dict
+
 from fastapi import APIRouter, Depends
-from typing import Dict, Any
 
 from app.controllers.agendame.appointments import search_for_appointments
 from app.schemas.agendame.appointments import AppointmentsToday
@@ -19,20 +20,20 @@ async def get_appointments(
     """
 
     search = await search_for_appointments(
-        schema=schema.model_dump(),   # pydantic v2 safe
-        company_id=current_user.id
+        schema=schema.model_dump(),  # pydantic v2 safe
+        company_id=current_user.id,
     )
 
     # Se vier vazio ou None
     if not search:
         return {
-            "appointments": [],
-            "pagination": {
-                "total": 0,
-                "limit": schema.limit or 100,
-                "offset": schema.offset or 0,
-                "has_more": False
-            }
+            'appointments': [],
+            'pagination': {
+                'total': 0,
+                'limit': schema.limit or 100,
+                'offset': schema.offset or 0,
+                'has_more': False,
+            },
         }
 
     # Garante contrato consistente
@@ -42,6 +43,6 @@ async def get_appointments(
     # fallback defensivo
     return (
         dict(search)
-        if hasattr(search, "__dict__")
-        else {"appointments": [], "pagination": {}}
+        if hasattr(search, '__dict__')
+        else {'appointments': [], 'pagination': {}}
     )
