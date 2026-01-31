@@ -353,9 +353,10 @@ export function updateUserName() {
     if (!userNameEl) initDomElements();
 
     try {
+        let business_name = localStorage.getItem('business_name')
+
         const userName = window.appState?.user?.name ||
-                        window.appState?.user?.username ||
-                        'Usuário';
+                        window.appState?.user?.username || business_name || "Agendame";
 
         userNameEl.textContent = userName;
 
