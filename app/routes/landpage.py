@@ -14,5 +14,3 @@ templates = Jinja2Templates(directory=template_dir)
 @router.get('/', response_class=HTMLResponse)
 def landpage_agendame(request: Request):
     return templates.TemplateResponse('landpage.html', {'request': request})
-
-

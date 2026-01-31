@@ -31,7 +31,7 @@ async def remove_service(
     )
 
 
-@router.put("/agendame/update/service/{service_id}", status_code=200)
+@router.put('/agendame/update/service/{service_id}', status_code=200)
 async def upgrade_service(
     service_id: int,
     schemas_update: UpdateServices,
@@ -41,10 +41,8 @@ async def upgrade_service(
     target_service = Services(target_company_id=current_user.id)
 
     return await target_service.upgrade_service(
-        target_service_id=service_id,
-        schemas=schemas_update
+        target_service_id=service_id, schemas=schemas_update
     )
-
 
 
 @router.get('/clients')

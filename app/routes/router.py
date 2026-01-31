@@ -21,20 +21,15 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(landpage_router)
 
     # AGENDAME COMPANY
-    from app.routes.agendame_company.agendame_service import (
-        router as adm_services_router,
-    )
-
+    from app.routes.agendame_company.agendame_service import \
+        router as adm_services_router
     # from app.routes.agendame_company.remove_or_upgrad_service import (
     #     router as remove_service_router,
-    from app.routes.agendame_company.appointments import (
-         router as appointments_router,
-     )
+    from app.routes.agendame_company.appointments import \
+        router as appointments_router
     from app.routes.agendame_company.info_company import router as info_company
-    from app.routes.agendame_company.register_services import (
-        router as create_services_router,
-    )
-
+    from app.routes.agendame_company.register_services import \
+        router as create_services_router
     # DADOS QUE SÂO FORNECIDO PARA O USUARIO CLIENTE
     from app.routes.customers.public_services import router as public_routes
 
@@ -48,6 +43,8 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(public_routes)
 
     # CHAT
-    from app.routes.agendame import router  as agendame_chat_router
-    app.include_router(agendame_chat_router, prefix="", tags=["agendame_chat"])  # Adicionado aqui
+    from app.routes.agendame import router as agendame_chat_router
 
+    app.include_router(
+        agendame_chat_router, prefix='', tags=['agendame_chat']
+    )  # Adicionado aqui

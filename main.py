@@ -8,7 +8,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.database.init_database import init_database, close_database, print_database_info
+from app.database.init_database import (
+    close_database,
+    init_database,
+    print_database_info,
+)
 from app.routes.router import register_routes
 
 # ======================================================
@@ -16,11 +20,12 @@ from app.routes.router import register_routes
 # ======================================================
 
 BASE_DIR = Path(__file__).resolve().parent
-static_dir = BASE_DIR / "app" / "static"
+static_dir = BASE_DIR / 'app' / 'static'
 
 # ======================================================
 # LIFESPAN (STARTUP / SHUTDOWN)
 # ======================================================
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,7 +36,7 @@ async def lifespan(app: FastAPI):
     # Database startup
     ok = await init_database()
     if not ok:
-        raise RuntimeError("Falha ao inicializar o banco de dados")
+        raise RuntimeError('Falha ao inicializar o banco de dados')
 
     print_database_info()
 
@@ -40,9 +45,11 @@ async def lifespan(app: FastAPI):
     # 🔒 Database shutdown
     await close_database()
 
+
 # ======================================================
 # SERVER CLASS
 # ======================================================
+
 
 class Server:
     """
@@ -56,7 +63,7 @@ class Server:
 
     def __init__(self) -> None:
         self.app = FastAPI(
-            title="Agendame",
+            title='Agendame',
             lifespan=lifespan,
         )
 
@@ -75,20 +82,20 @@ class Server:
             check_dir=True,
         )
 
-        self.app.mount("/static", static_files, name="static")
+        self.app.mount('/static', static_files, name='static')
 
         # Middleware para MIME types
-        @self.app.middleware("http")
+        @self.app.middleware('http')
         async def add_mime_type_header(request: Request, call_next):
             response = await call_next(request)
 
             path = request.url.path
-            if path.endswith(".js"):
-                response.headers["Content-Type"] = "text/javascript"
-            elif path.endswith(".css"):
-                response.headers["Content-Type"] = "text/css"
-            elif path.endswith(".html"):
-                response.headers["Content-Type"] = "text/html"
+            if path.endswith('.js'):
+                response.headers['Content-Type'] = 'text/javascript'
+            elif path.endswith('.css'):
+                response.headers['Content-Type'] = 'text/css'
+            elif path.endswith('.html'):
+                response.headers['Content-Type'] = 'text/html'
 
             return response
 
@@ -99,10 +106,10 @@ class Server:
 
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=["*"],
+            allow_origins=['*'],
             allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
+            allow_methods=['*'],
+            allow_headers=['*'],
         )
 
     # --------------------------------------------------
@@ -116,15 +123,16 @@ class Server:
 
     # --------------------------------------------------
 
-    def run(self, host: str = "0.0.0.0", port: int = 8000) -> None:
-        """Inicializa o servidor"""
+    def run(self, host: str = '0.0.0.0', port: int = 8000) -> None:
         uvicorn.run(
-            "main:app",
+            'main:app',
             host=host,
             port=port,
-            reload=True,
-            workers=1,  # dev
+            reload=os.getenv("ENVIRONMENT") == "DEVELOPMENT",
+            workers=1,
         )
+
+
 
 # ======================================================
 # BOOTSTRAP
@@ -133,5 +141,5 @@ class Server:
 server_instance = Server()
 app = server_instance.app
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     server_instance.run()

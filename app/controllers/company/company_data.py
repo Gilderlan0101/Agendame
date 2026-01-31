@@ -1,8 +1,9 @@
 import os
 
+from dotenv import load_dotenv
+
 from app.models.user import User
 from app.utils.i_requests import company_exist
-from dotenv import load_dotenv
 
 load_dotenv()
 

@@ -5,17 +5,13 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Union
 
+from fastapi import HTTPException, status
+
 from app.controllers import company
 from app.controllers.company.company_data import MyCompany
-from app.models.user import (
-    Appointment,
-    BusinessSettings,
-    Client,
-    Service,
-    User,
-)
+from app.models.user import (Appointment, BusinessSettings, Client, Service,
+                             User)
 from app.schemas.agendame.upgrade_service import UpdateServices
-from fastapi import HTTPException, status
 
 
 class Services:

@@ -4,14 +4,15 @@ from dataclasses import field
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Union
+
 from fastapi import HTTPException, status
 
+from app.controllers.agendame.services import Services
+from app.controllers.company.company_data import MyCompany
 from app.models.user import (Appointment, BusinessSettings, Client, Service,
                              User)
 from app.schemas.agendame.upgrade_service import UpdateServices
 
-from app.controllers.company.company_data import MyCompany
-from app.controllers.agendame.services import Services
 
 class Appointments:
     """Camada de domínio para gerenciamento de agendamentos."""
@@ -83,8 +84,8 @@ class Appointments:
 
         day_name = target_date.strftime('%A').lower()
         if (
-            day_name not in business_hours # type:ignore
-            or not business_hours[day_name]['open'] # type:ignore
+            day_name not in business_hours  # type:ignore
+            or not business_hours[day_name]['open']  # type:ignore
         ):
             return {
                 'date': target_date.isoformat(),
@@ -94,8 +95,8 @@ class Appointments:
             }
 
         all_time_slots = self._generate_time_slots(
-            business_hours[day_name]['open'],# type:ignore
-            business_hours[day_name]['close'],# type:ignore
+            business_hours[day_name]['open'],  # type:ignore
+            business_hours[day_name]['close'],  # type:ignore
             settings['time_slot_duration'],
         )
 
@@ -118,7 +119,9 @@ class Appointments:
                 'price': str(service.price),
             },
             'available_times': available_times,
-            'business_hours': business_hours[day_name] if business_hours[day_name] else "N/A" ,# type:ignore
+            'business_hours': business_hours[day_name]
+            if business_hours[day_name]
+            else 'N/A',  # type:ignore
             'total_available': len(available_times),
         }
 
@@ -337,10 +340,10 @@ class Appointments:
                     'client': {
                         'name': apt.client_name,
                         'phone': apt.client_phone,
-                        'client_id': apt.client_id,# type:ignore
+                        'client_id': apt.client_id,  # type:ignore
                     },
                     'service': {
-                        'id': apt.service_id,# type:ignore
+                        'id': apt.service_id,  # type:ignore
                         'name': apt.service.name
                         if apt.service
                         else 'Serviço não encontrado',
@@ -356,7 +359,6 @@ class Appointments:
 
         return result
 
-
     async def update_one_appointments(self, target_appointment: int, schema):
         """Atualizar informações de um agendamento já cadastrado."""
 
@@ -367,13 +369,12 @@ class Appointments:
         search_appointment = await Appointment.filter(
             user_id=company_id,
             id=target_appointment,
-
         ).first()
 
         if not search_appointment:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Agendamento não encontrado ou status não é 'Agendado'"
+                detail="Agendamento não encontrado ou status não é 'Agendado'",
             )
 
         try:
@@ -389,14 +390,12 @@ class Appointments:
             if schema.service_id is not None:
                 # Verificar se o serviço pertence à empresa
                 service = await Service.filter(
-                    id=schema.service_id,
-                    user_id=company_id,
-                    is_active=True
+                    id=schema.service_id, user_id=company_id, is_active=True
                 ).first()
                 if not service:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Serviço não encontrado ou indisponível"
+                        detail='Serviço não encontrado ou indisponível',
                     )
                 update_data['service_id'] = schema.service_id
                 # Atualizar o preço se o serviço for alterado
@@ -419,50 +418,68 @@ class Appointments:
 
             # Validar disponibilidade se data/hora for alterada
             if schema.appointment_date or schema.appointment_time:
-                appointment_date = schema.appointment_date or search_appointment.appointment_date
-                appointment_time = schema.appointment_time or search_appointment.appointment_time
-                service_id = schema.service_id or search_appointment.service_id # type: ignore
+                appointment_date = (
+                    schema.appointment_date
+                    or search_appointment.appointment_date
+                )
+                appointment_time = (
+                    schema.appointment_time
+                    or search_appointment.appointment_time
+                )
+                service_id = (
+                    schema.service_id or search_appointment.service_id
+                )   # type: ignore
 
                 # Verificar se o novo horário está disponível (exceto para o próprio agendamento)
-                existing = await Appointment.filter(
-                    user_id=company_id,
-                    appointment_date=appointment_date,
-                    appointment_time=appointment_time,
-                    service_id=service_id,
-                    status__in=['scheduled', 'confirmed']
-                ).exclude(id=target_appointment).first()
+                existing = (
+                    await Appointment.filter(
+                        user_id=company_id,
+                        appointment_date=appointment_date,
+                        appointment_time=appointment_time,
+                        service_id=service_id,
+                        status__in=['scheduled', 'confirmed'],
+                    )
+                    .exclude(id=target_appointment)
+                    .first()
+                )
 
                 if existing:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Horário já ocupado por outro agendamento"
+                        detail='Horário já ocupado por outro agendamento',
                     )
 
             # Atualizar o agendamento
             await Appointment.filter(id=target_appointment).update(
-                **update_data,
-                updated_at=datetime.utcnow()
+                **update_data, updated_at=datetime.utcnow()
             )
 
             # Buscar o agendamento atualizado
-            updated_appointment = await Appointment.filter(id=target_appointment)\
-                .select_related('service', 'client')\
+            updated_appointment = (
+                await Appointment.filter(id=target_appointment)
+                .select_related('service', 'client')
                 .first()
+            )
 
             # Atualizar cliente se telefone foi alterado
-            if schema.client_phone is not None and updated_appointment.client_id: # type: ignore
-                client = await Client.filter(id=updated_appointment.client_id).first() # type: ignore
+            if (
+                schema.client_phone is not None
+                and updated_appointment.client_id
+            ):   # type: ignore
+                client = await Client.filter(
+                    id=updated_appointment.client_id
+                ).first()   # type: ignore
                 if client and client.phone != schema.client_phone:
                     # Criar novo cliente ou atualizar existente
                     new_client = await Client.filter(
-                        user_id=company_id,
-                        phone=schema.client_phone
+                        user_id=company_id, phone=schema.client_phone
                     ).first()
 
                     if new_client:
                         # Atualizar agendamento com novo cliente
-                        await Appointment.filter(id=target_appointment)\
-                            .update(client_id=new_client.id)
+                        await Appointment.filter(id=target_appointment).update(
+                            client_id=new_client.id
+                        )
                         # Atualizar nome se fornecido
                         if schema.client_name:
                             new_client.full_name = schema.client_name
@@ -471,29 +488,31 @@ class Appointments:
                         # Criar novo cliente
                         new_client = await Client.create(
                             user_id=company_id,
-                            full_name=schema.client_name or search_appointment.client_name,
+                            full_name=schema.client_name
+                            or search_appointment.client_name,
                             phone=schema.client_phone,
                             total_appointments=1,
-                            is_active=True
+                            is_active=True,
                         )
-                        await Appointment.filter(id=target_appointment)\
-                            .update(client_id=new_client.id)
+                        await Appointment.filter(id=target_appointment).update(
+                            client_id=new_client.id
+                        )
 
             return {
                 'success': True,
                 'message': 'Agendamento atualizado com sucesso',
                 'appointment': {
                     'id': updated_appointment.id,
-                    'client_name': updated_appointment.client_name, # type: ignore
-                    'client_phone': updated_appointment.client_phone, # type: ignore
-                    'service_id': updated_appointment.service_id, # type: ignore
-                    'service_name': updated_appointment.service.name if updated_appointment.service else None, # type: ignore
-                    'appointment_date': updated_appointment.appointment_date, # type: ignore
-                    'appointment_time': updated_appointment.appointment_time, # type: ignore
-                    'price': str(updated_appointment.price), # type: ignore
-                    'status': updated_appointment.status, # type: ignore
-                    'notes': updated_appointment.notes # type: ignore
-                }
+                    'client_name': updated_appointment.client_name,  # type: ignore
+                    'client_phone': updated_appointment.client_phone,  # type: ignore
+                    'service_id': updated_appointment.service_id,  # type: ignore
+                    'service_name': updated_appointment.service.name if updated_appointment.service else None,  # type: ignore
+                    'appointment_date': updated_appointment.appointment_date,  # type: ignore
+                    'appointment_time': updated_appointment.appointment_time,  # type: ignore
+                    'price': str(updated_appointment.price),  # type: ignore
+                    'status': updated_appointment.status,  # type: ignore
+                    'notes': updated_appointment.notes,  # type: ignore
+                },
             }
 
         except HTTPException:
@@ -501,5 +520,5 @@ class Appointments:
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Erro ao atualizar agendamento: {str(e)}"
+                detail=f'Erro ao atualizar agendamento: {str(e)}',
             )

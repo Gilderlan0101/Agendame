@@ -1,3 +1,4 @@
+# init_database.py
 import os
 from typing import Any, Dict
 
@@ -10,6 +11,16 @@ load_dotenv()
 DEFAULT_SQLITE_PATH = 'agendame.db'
 
 
+def normalize_database_url(url: str) -> str:
+    """
+    Normaliza a URL do banco para compatibilidade com Tortoise ORM.
+    Tortoise NÃO aceita 'postgresql://', apenas 'postgres://'
+    """
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgres://", 1)
+    return url
+
+
 def get_database_config() -> Dict[str, Any]:
     environment = os.getenv('ENVIRONMENT', 'DEVELOPMENT')
 
@@ -19,21 +30,25 @@ def get_database_config() -> Dict[str, Any]:
     if environment == 'PRODUCTION':
         print(' [OK] Usando configuração de PRODUÇÃO (PostgreSQL - Supabase)')
 
-        database_url = os.getenv('DATABASE_URL')
+        raw_database_url = os.getenv('DATABASE_URL')
 
-        if not database_url:
+        if not raw_database_url:
             raise ValueError('[ERRO] DATABASE_URL não definido no .env')
 
+        database_url = normalize_database_url(raw_database_url)
+
         return {
-            'connections': {'default': database_url},
+            'connections': {
+                'default': database_url
+            },
             'apps': {
                 'models': {
                     'models': [
                         'app.models.user',
                         # futuros:
-                        # "app.models.client",
-                        # "app.models.service",
-                        # "app.models.appointment",
+                        # 'app.models.client',
+                        # 'app.models.service',
+                        # 'app.models.appointment',
                     ],
                     'default_connection': 'default',
                 }
@@ -50,7 +65,9 @@ def get_database_config() -> Dict[str, Any]:
     db_name = os.getenv('DB_NAME_DEV_LOCAL', DEFAULT_SQLITE_PATH)
 
     return {
-        'connections': {'default': f'sqlite://{db_name}'},
+        'connections': {
+            'default': f'sqlite://{db_name}'
+        },
         'apps': {
             'models': {
                 'models': [
@@ -74,7 +91,7 @@ async def init_database() -> bool:
         await Tortoise.init(config=TORTOISE_ORM)
         print('[OK] Tortoise ORM inicializado')
 
-        # Teste de conexão real
+        # Teste real de conexão
         conn = Tortoise.get_connection('default')
         await conn.execute_query('SELECT 1')
         print('[OK] Conexão verificada')
@@ -87,11 +104,11 @@ async def init_database() -> bool:
         return True
 
     except DBConnectionError as e:
-        print(f'[ERRO] Falha de conexão: {e}')
+        print(f'[ERRO] Falha de conexão com banco: {e}')
         return False
 
     except ConfigurationError as e:
-        print(f'[ERRO] Erro de configuração: {e}')
+        print(f'[ERRO] Erro de configuração ORM: {e}')
         return False
 
     except Exception as e:
@@ -113,7 +130,7 @@ def print_database_info():
     print('-----------------------------------------')
     if isinstance(conn, str) and conn.startswith('postgres'):
         print('📦 Conectado a PostgreSQL (Supabase)')
-        print(f"   - URL: {conn.split('@')[1].split('/')[0]}")
+        print(f"   - Host: {conn.split('@')[1].split('/')[0]}")
     else:
         print('📦 Conectado a SQLite')
         print(f'   - Arquivo: {conn}')

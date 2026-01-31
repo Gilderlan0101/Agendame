@@ -1,9 +1,8 @@
 from datetime import date
-
-
-from typing import Optional, List
-from pydantic import BaseModel, Field, validator
 from decimal import Decimal
+from typing import List, Optional
+
+from pydantic import BaseModel, Field, validator
 
 
 class AppointmentsToday(BaseModel):
@@ -54,19 +53,19 @@ class AppointmentsToday(BaseModel):
         }
 
 
-
-
-
-
 # Schema para filtro de agendamentos
 class AppointmentsFilter(BaseModel):
-    start_date: Optional[date] = Field(None, description="Data inicial (YYYY-MM-DD)")
-    end_date: Optional[date] = Field(None, description="Data final (YYYY-MM-DD)")
-    status: Optional[str] = Field(None, description="Status do agendamento")
-    client_name: Optional[str] = Field(None, description="Nome do cliente")
-    service_id: Optional[int] = Field(None, description="ID do serviço")
-    offset: int = Field(0, ge=0, description="Offset para paginação")
-    limit: int = Field(100, ge=1, le=200, description="Limite de resultados")
+    start_date: Optional[date] = Field(
+        None, description='Data inicial (YYYY-MM-DD)'
+    )
+    end_date: Optional[date] = Field(
+        None, description='Data final (YYYY-MM-DD)'
+    )
+    status: Optional[str] = Field(None, description='Status do agendamento')
+    client_name: Optional[str] = Field(None, description='Nome do cliente')
+    service_id: Optional[int] = Field(None, description='ID do serviço')
+    offset: int = Field(0, ge=0, description='Offset para paginação')
+    limit: int = Field(100, ge=1, le=200, description='Limite de resultados')
 
 
 # Schema para resposta de agendamentos
@@ -94,12 +93,18 @@ class AppointmentsListResponse(BaseModel):
 
 # Schema para criar agendamento interno
 class CreateAppointmentInternal(BaseModel):
-    client_name: str = Field(..., max_length=200, description="Nome do cliente")
-    client_phone: str = Field(..., max_length=20, description="Telefone do cliente")
-    service_id: int = Field(..., description="ID do serviço")
-    appointment_date: date = Field(..., description="Data do agendamento")
-    appointment_time: str = Field(..., description="Horário do agendamento (HH:MM)")
-    notes: Optional[str] = Field(None, description="Observações")
+    client_name: str = Field(
+        ..., max_length=200, description='Nome do cliente'
+    )
+    client_phone: str = Field(
+        ..., max_length=20, description='Telefone do cliente'
+    )
+    service_id: int = Field(..., description='ID do serviço')
+    appointment_date: date = Field(..., description='Data do agendamento')
+    appointment_time: str = Field(
+        ..., description='Horário do agendamento (HH:MM)'
+    )
+    notes: Optional[str] = Field(None, description='Observações')
 
     @validator('appointment_time')
     def validate_time_format(cls, v):
@@ -131,10 +136,6 @@ class AppointmentCreatedResponse(BaseModel):
     message: str
 
 
-
-
-
-
 class UpdateAppointmentSchema(BaseModel):
     """Schema para atualização parcial de agendamentos."""
 
@@ -152,6 +153,7 @@ class UpdateAppointmentSchema(BaseModel):
         if v is not None:
             try:
                 from datetime import datetime
+
                 # Validar formato HH:MM
                 datetime.strptime(v, '%H:%M')
             except ValueError:
@@ -161,9 +163,17 @@ class UpdateAppointmentSchema(BaseModel):
     @validator('status')
     def validate_status(cls, v):
         if v is not None:
-            valid_statuses = ['scheduled', 'confirmed', 'completed', 'cancelled', 'no_show']
+            valid_statuses = [
+                'scheduled',
+                'confirmed',
+                'completed',
+                'cancelled',
+                'no_show',
+            ]
             if v not in valid_statuses:
-                raise ValueError(f'Status inválido. Use: {", ".join(valid_statuses)}')
+                raise ValueError(
+                    f'Status inválido. Use: {", ".join(valid_statuses)}'
+                )
         return v
 
     class Config:

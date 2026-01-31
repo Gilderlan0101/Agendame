@@ -4,11 +4,8 @@ from fastapi import HTTPException, status
 
 from app.models.user import User
 from app.schemas.auth.schemas_login import LoginResponse
-from app.service.jwt.auth import (
-    create_access_token,
-    create_refresh_token,
-    verify_password,
-)
+from app.service.jwt.auth import (create_access_token, create_refresh_token,
+                                  verify_password)
 
 
 async def checking_account(target: Dict[str, Any]):

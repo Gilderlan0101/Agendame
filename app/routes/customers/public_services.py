@@ -1,45 +1,45 @@
 from datetime import date
 from typing import Optional
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
-from app.controllers.agendame.services import Services
-from app.service.jwt.depends import get_current_user, SystemUser
+
 from app.controllers.agendame.appointments import Appointments
+from app.controllers.agendame.services import Services
+from app.service.jwt.depends import SystemUser, get_current_user
 
-
-router = APIRouter(tags=["Cliente - Serviços e Agendamentos"])
+router = APIRouter(tags=['Cliente - Serviços e Agendamentos'])
 
 # ============================================================================
 # ROTAS PÚBLICAS (para clientes)
 # ============================================================================
 
-@router.get("/services/{company_identifier}")
+
+@router.get('/services/{company_identifier}')
 async def list_services_for_customers(
     company_identifier: str,
     search_by: Optional[str] = Query(
-        "auto",
-        description="Como buscar a empresa: 'auto' (tenta slug, username, nome), 'slug', 'username', 'name'"
+        'auto',
+        description="Como buscar a empresa: 'auto' (tenta slug, username, nome), 'slug', 'username', 'name'",
     ),
     filter_by: Optional[str] = Query(
         None,
-        description="Campo para filtrar os serviços (ex: name, duration_minutes)"
+        description='Campo para filtrar os serviços (ex: name, duration_minutes)',
     ),
     filter_value: Optional[str] = Query(
-        None,
-        description="Valor para filtrar (usado com filter_by)"
+        None, description='Valor para filtrar (usado com filter_by)'
     ),
     is_active: bool = Query(
-        True,
-        description="Filtrar apenas serviços ativos"
+        True, description='Filtrar apenas serviços ativos'
     ),
     order_by: Optional[str] = Query(
         None,
-        description="Campos para ordenação separados por vírgula (ex: price, name)"
+        description='Campos para ordenação separados por vírgula (ex: price, name)',
     ),
     include_inactive: Optional[bool] = Query(
         False,
-        description="Incluir serviços inativos (sobrescreve is_active se True)",
-        include_in_schema=False
-    )
+        description='Incluir serviços inativos (sobrescreve is_active se True)',
+        include_in_schema=False,
+    ),
 ):
     """
     Lista serviços disponíveis de uma empresa para clientes.
@@ -62,6 +62,7 @@ async def list_services_for_customers(
     """
     try:
         import urllib.parse
+
         decoded_identifier = urllib.parse.unquote(company_identifier)
 
         services_domain = Services()
@@ -70,49 +71,57 @@ async def list_services_for_customers(
 
         order_by_list = None
         if order_by:
-            order_by_list = [field.strip() for field in order_by.split(',') if field.strip()]
+            order_by_list = [
+                field.strip() for field in order_by.split(',') if field.strip()
+            ]
 
         services = await services_domain.get_services_by_identifier(
             identifier=decoded_identifier,
-            search_type=search_by, # type:ignore
+            search_type=search_by,  # type:ignore
             query_by=filter_by,
             query_value=filter_value,
             is_active=final_is_active,
-            order_by=order_by_list
+            order_by=order_by_list,
         )
 
-        company_info = await services_domain.get_company_info(decoded_identifier, search_by) # type:ignore
+        company_info = await services_domain.get_company_info(
+            decoded_identifier, search_by
+        )   # type:ignore
 
         return {
-            "company": company_info.get("business_name", decoded_identifier),
-            "company_slug": company_info.get("business_slug"),
-            "company_username": company_info.get("username"),
-            "services": services,
-            "total_services": len(services),
-            "filters_applied": {
-                "search_by": search_by,
-                "filter_by": filter_by,
-                "filter_value": filter_value,
-                "is_active": final_is_active
-            }
+            'company': company_info.get('business_name', decoded_identifier),
+            'company_slug': company_info.get('business_slug'),
+            'company_username': company_info.get('username'),
+            'services': services,
+            'total_services': len(services),
+            'filters_applied': {
+                'search_by': search_by,
+                'filter_by': filter_by,
+                'filter_value': filter_value,
+                'is_active': final_is_active,
+            },
         }
 
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(f"Erro ao listar serviços: {str(e)}")
+        print(f'Erro ao listar serviços: {str(e)}')
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro interno ao processar solicitação"
+            detail='Erro interno ao processar solicitação',
         )
 
 
-@router.get("/services/{company_identifier}/available-times")
+@router.get('/services/{company_identifier}/available-times')
 async def get_available_times(
     company_identifier: str,
-    service_id: int = Query(..., description="ID do serviço"),
-    date: date = Query(..., description="Data para consultar disponibilidade (YYYY-MM-DD)"),
-    search_by: str = Query("auto", description="Tipo de busca: auto, slug, username, name")
+    service_id: int = Query(..., description='ID do serviço'),
+    date: date = Query(
+        ..., description='Data para consultar disponibilidade (YYYY-MM-DD)'
+    ),
+    search_by: str = Query(
+        'auto', description='Tipo de busca: auto, slug, username, name'
+    ),
 ):
     """
     Consulta horários disponíveis para um serviço específico.
@@ -122,6 +131,7 @@ async def get_available_times(
     """
     try:
         import urllib.parse
+
         decoded_identifier = urllib.parse.unquote(company_identifier)
 
         appointments_domain = Appointments()
@@ -130,7 +140,7 @@ async def get_available_times(
             service_id=service_id,
             target_date=date,
             identifier=decoded_identifier,
-            search_type=search_by
+            search_type=search_by,
         )
 
         return available
@@ -138,23 +148,31 @@ async def get_available_times(
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(f"Erro ao consultar horários: {str(e)}")
+        print(f'Erro ao consultar horários: {str(e)}')
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro interno ao processar solicitação"
+            detail='Erro interno ao processar solicitação',
         )
 
 
-@router.post("/services/{company_identifier}/book")
+@router.post('/services/{company_identifier}/book')
 async def book_appointment(
     company_identifier: str,
-    service_id: int = Body(..., description="ID do serviço"),
-    appointment_date: date = Body(..., description="Data do agendamento (YYYY-MM-DD)"),
-    appointment_time: str = Body(..., description="Hora do agendamento (HH:MM)"),
-    client_name: str = Body(..., description="Nome do cliente", max_length=200),
-    client_phone: str = Body(..., description="Telefone do cliente", max_length=20),
-    search_by: str = Body("auto", description="Tipo de busca"),
-    notes: Optional[str] = Body(None, description="Observações adicionais")
+    service_id: int = Body(..., description='ID do serviço'),
+    appointment_date: date = Body(
+        ..., description='Data do agendamento (YYYY-MM-DD)'
+    ),
+    appointment_time: str = Body(
+        ..., description='Hora do agendamento (HH:MM)'
+    ),
+    client_name: str = Body(
+        ..., description='Nome do cliente', max_length=200
+    ),
+    client_phone: str = Body(
+        ..., description='Telefone do cliente', max_length=20
+    ),
+    search_by: str = Body('auto', description='Tipo de busca'),
+    notes: Optional[str] = Body(None, description='Observações adicionais'),
 ):
     """
     Realiza um novo agendamento.
@@ -173,6 +191,7 @@ async def book_appointment(
     """
     try:
         import urllib.parse
+
         decoded_identifier = urllib.parse.unquote(company_identifier)
 
         appointments_domain = Appointments()
@@ -185,7 +204,7 @@ async def book_appointment(
             client_phone=client_phone,
             identifier=decoded_identifier,
             search_type=search_by,
-            notes=notes
+            notes=notes,
         )
 
         return result
@@ -193,10 +212,10 @@ async def book_appointment(
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(f"Erro ao criar agendamento: {str(e)}")
+        print(f'Erro ao criar agendamento: {str(e)}')
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro interno ao processar solicitação"
+            detail='Erro interno ao processar solicitação',
         )
 
 
@@ -204,12 +223,17 @@ async def book_appointment(
 # ROTAS PRIVADAS (para empresas - requer autenticação)
 # ============================================================================
 
-@router.get("/company/appointments", tags=["Empresa - Agendamentos"])
+
+@router.get('/company/appointments', tags=['Empresa - Agendamentos'])
 async def list_company_appointments(
     current_user: SystemUser = Depends(get_current_user),
-    start_date: Optional[date] = Query(None, description="Data inicial (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="Data final (YYYY-MM-DD)"),
-    status: Optional[str] = Query(None, description="Status do agendamento")
+    start_date: Optional[date] = Query(
+        None, description='Data inicial (YYYY-MM-DD)'
+    ),
+    end_date: Optional[date] = Query(
+        None, description='Data final (YYYY-MM-DD)'
+    ),
+    status: Optional[str] = Query(None, description='Status do agendamento'),
 ):
     """
     Lista agendamentos da empresa (uso interno).
@@ -224,31 +248,28 @@ async def list_company_appointments(
         appointments_domain = Appointments(target_company_id=current_user.id)
 
         appointments = await appointments_domain.get_company_appointments(
-            start_date=start_date,
-            end_date=end_date,
-            status=status
+            start_date=start_date, end_date=end_date, status=status
         )
 
-        return {
-            "appointments": appointments,
-            "total": len(appointments)
-        }
+        return {'appointments': appointments, 'total': len(appointments)}
 
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(f"Erro ao listar agendamentos: {str(e)}")
+        print(f'Erro ao listar agendamentos: {str(e)}')
         raise HTTPException(
-            status_code=500, # TODO: Usar status.HTTP_500_INTERNAL_SERVER_ERROR
-            detail="Erro interno ao processar solicitação"
+            status_code=500,  # TODO: Usar status.HTTP_500_INTERNAL_SERVER_ERROR
+            detail='Erro interno ao processar solicitação',
         )
 
 
 # Rotas adicionais para empresa (se precisar)
-@router.get("/company/services", tags=["Empresa - Serviços"])
+@router.get('/company/services', tags=['Empresa - Serviços'])
 async def list_company_services(
     current_user: SystemUser = Depends(get_current_user),
-    is_active: Optional[bool] = Query(None, description="Filtrar por status ativo")
+    is_active: Optional[bool] = Query(
+        None, description='Filtrar por status ativo'
+    ),
 ):
     """
     Lista serviços da empresa (uso interno).
@@ -257,20 +278,15 @@ async def list_company_services(
     try:
         services_domain = Services(target_company_id=current_user.id)
 
-        services = await services_domain.get_services(
-            is_active=is_active
-        )
+        services = await services_domain.get_services(is_active=is_active)
 
-        return {
-            "services": services,
-            "total": len(services)
-        }
+        return {'services': services, 'total': len(services)}
 
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(f"Erro ao listar serviços: {str(e)}")
+        print(f'Erro ao listar serviços: {str(e)}')
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro interno ao processar solicitação"
+            detail='Erro interno ao processar solicitação',
         )

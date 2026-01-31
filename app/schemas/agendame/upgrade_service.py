@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, ConfigDict
 from decimal import Decimal
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict
+
 
 class UpdateServices(BaseModel):
     name: Optional[str] = None
@@ -10,4 +12,3 @@ class UpdateServices(BaseModel):
     duration_minutes: Optional[int] = None
     is_active: Optional[bool] = None
     updated_at: Optional[datetime] = None
-
