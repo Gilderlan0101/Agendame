@@ -1,6 +1,7 @@
 // home.js - Módulo para estatísticas e dashboard
 import { appState } from './appState.js'
 import { loadAppointments } from './appointments.js'
+
 // ============================================
 // ELEMENTOS DO DOM PARA DASHBOARD
 // ============================================
@@ -60,9 +61,8 @@ function initDomElements() {
 
 export async function quantityAppointments(){
     let total = await loadAppointments();
-    return total.total
+    return total?.total || 0;
 }
-
 
 /**
  * Atualiza o contador de agendamentos de hoje no dashboard
@@ -74,18 +74,18 @@ export async function updateTodayAppointmentsCount() {
         const today = new Date().toISOString().split('T')[0];
         let count = 0;
 
-        if (window.appState?.appointments && Array.isArray(window.appState.appointments)) {
-            const todayApps = window.appState.appointments.filter(appointment => {
+        if (appState.appointments && Array.isArray(appState.appointments)) {  // ALTERADO
+            const todayApps = appState.appointments.filter(appointment => {  // ALTERADO
                 const appDate = appointment.date || appointment.appointment_date;
                 const isToday = appDate === today;
                 const isValidStatus = appointment.status !== 'cancelled' &&
                                      appointment.status !== 'no_show';
                 return isToday && isValidStatus;
             });
-
+            count = todayApps.length;
+        } else {
+            count = await quantityAppointments();
         }
-
-        count = await quantityAppointments()
 
         todayAppointmentsEl.textContent = count;
         return count;
@@ -107,8 +107,8 @@ export function updateTodayRevenue() {
         const today = new Date().toISOString().split('T')[0];
         let totalRevenue = 0;
 
-        if (window.appState?.appointments && Array.isArray(window.appState.appointments)) {
-            const todayRevenueApps = window.appState.appointments.filter(appointment => {
+        if (appState.appointments && Array.isArray(appState.appointments)) {  // ALTERADO
+            const todayRevenueApps = appState.appointments.filter(appointment => {  // ALTERADO
                 const appDate = appointment.date || appointment.appointment_date;
                 const isValidStatus = appointment.status === 'confirmed' ||
                                      appointment.status === 'completed';
@@ -135,13 +135,10 @@ export function updateTodayRevenue() {
     }
 }
 
-
 // Carregar clientes
 export async function loadClients(isDashboard = false) {
-
-
     try {
-        let quantity_clients = 0
+        let quantity_clients = 0;
         const response = await fetch('/clients', {
             headers: {
                 'Authorization': `Bearer ${appState.token}`
@@ -151,34 +148,41 @@ export async function loadClients(isDashboard = false) {
         if (response.ok) {
             const data = await response.json();
             const clients = data.clients || [];
-            quantity_clients =  data.clients.length;
-            return quantity_clients
+            quantity_clients = clients.length;
+
+            // ATUALIZA O APPSTATE COM OS CLIENTES
+            appState.clients = clients;
+
+            return quantity_clients;
         }
 
-        return 0
+        return 0;
 
     } catch (error) {
         console.error('Erro ao carregar clientes:', error);
         if (!isDashboard) {
-            console.log('Erro ao carregar clientes', 'error');
+            showAlert('Erro ao carregar clientes', 'error');
         }
+        return 0;
     }
 }
-
 
 /**
  * Atualiza o contador de clientes no dashboard
  */
-export  async function updateClientsCount() {
+export async function updateClientsCount() {
     if (!totalClientsEl) initDomElements();
 
     try {
+        let real_value_of_clients = await loadClients();
 
-        let real_value_of_clients = await await loadClients()
-
-
-        const clientCount = window.appState?.clients?.length || appState.clients.length || real_value_of_clients  ;
+        // Usa o valor mais atual
+        const clientCount = real_value_of_clients || appState.clients?.length || 0;
         totalClientsEl.textContent = clientCount;
+
+        // Atualiza também no appState para consistência
+        appState.totalClients = clientCount;
+
         return clientCount;
 
     } catch (error) {
@@ -195,8 +199,13 @@ export function updateActiveServicesCount() {
     if (!activeServicesEl) initDomElements();
 
     try {
-        const activeServices = window.appState?.services?.filter(s => s.is_active !== false).length || appState.services.length;
+        // Corrigido: usa appState direto
+        const activeServices = appState.services?.filter(s => s.is_active !== false).length || 0;
         activeServicesEl.textContent = activeServices;
+
+        // Atualiza no appState
+        appState.activeServicesCount = activeServices;
+
         return activeServices;
 
     } catch (error) {
@@ -218,21 +227,21 @@ export function updateAllCounts() {
         }
 
         // Atualizar contador de agendamentos totais
-        if (allAppointmentsCountEl && window.appState?.appointments) {
-            const totalAppointments = window.appState.appointments.length;
+        if (allAppointmentsCountEl && appState.appointments) {  // ALTERADO
+            const totalAppointments = appState.appointments.length;  // ALTERADO
             allAppointmentsCountEl.textContent = totalAppointments;
             console.log(`Total agendamentos: ${totalAppointments}`);
         }
 
         // Atualizar contador de serviços
-        if (servicesCountEl && window.appState?.services) {
-            const totalServices = window.appState.services.length;
+        if (servicesCountEl && appState.services) {  // ALTERADO
+            const totalServices = appState.services.length;  // ALTERADO
             servicesCountEl.textContent = totalServices;
         }
 
         // Atualizar contador de clientes
-        if (clientsCountEl && window.appState?.clients) {
-            const totalClients = window.appState.clients.length;
+        if (clientsCountEl && appState.clients) {  // ALTERADO
+            const totalClients = appState.clients.length;  // ALTERADO
             clientsCountEl.textContent = totalClients;
         }
 
@@ -258,8 +267,8 @@ export function updateNextAppointments() {
 
         let upcomingApps = [];
 
-        if (window.appState?.appointments && Array.isArray(window.appState.appointments)) {
-            upcomingApps = window.appState.appointments.filter(appointment => {
+        if (appState.appointments && Array.isArray(appState.appointments)) {  // ALTERADO
+            upcomingApps = appState.appointments.filter(appointment => {  // ALTERADO
                 const appDateStr = appointment.date || appointment.appointment_date;
                 if (!appDateStr) return false;
 
@@ -321,12 +330,12 @@ export function updateNextAppointments() {
                     <div class="client-status ${statusClass}">${statusText}</div>
                     <div class="client-actions">
                         <button class="action-btn action-whatsapp"
-                                onclick="window.sendWhatsAppReminder('${clientPhone}')"
+                                onclick="sendWhatsAppReminder('${appointment.id}')"
                                 title="Enviar WhatsApp">
                             <i class="fab fa-whatsapp"></i>
                         </button>
                         <button class="action-btn action-view"
-                                onclick="viewAppointment(${appointment.id})"
+                                onclick="viewAppointmentDetails(${appointment.id})"
                                 title="Ver detalhes">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -353,10 +362,10 @@ export function updateUserName() {
     if (!userNameEl) initDomElements();
 
     try {
-        let business_name = localStorage.getItem('business_name')
+        let business_name = localStorage.getItem('business_name');
 
-        const userName = window.appState?.user?.name ||
-                        window.appState?.user?.username || business_name || "Agendame";
+        const userName = appState.user?.name ||  // ALTERADO
+                        appState.user?.username || business_name || "Agendame";
 
         userNameEl.textContent = userName;
 
@@ -411,7 +420,6 @@ export function refreshDashboard() {
  * Atualiza uma aba específica do dashboard
  */
 export function updateTab(tabId) {
-
     switch(tabId) {
         case 'dashboardTab':
             refreshDashboard();
@@ -440,7 +448,7 @@ function updateAppointmentsTab() {
     }
 
     try {
-        const appointments = window.appState?.appointments || [];
+        const appointments = appState.appointments || [];  // ALTERADO
         allAppointmentsCountEl.textContent = appointments.length;
 
         if (appointments.length === 0) {
@@ -477,12 +485,12 @@ function updateAppointmentsTab() {
                     <div class="client-status ${statusClass}">${statusText}</div>
                     <div class="client-actions">
                         <button class="action-btn action-whatsapp"
-                                onclick="window.sendWhatsAppReminder('${clientPhone}')"
+                                onclick="sendWhatsAppReminder('${clientPhone}')"
                                 title="Enviar WhatsApp">
                             <i class="fab fa-whatsapp"></i>
                         </button>
                         <button class="action-btn action-edit"
-                                onclick="window.editAppointment('${appointment.id}')"
+                                onclick="editAppointment('${appointment.id}')"
                                 title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>
@@ -511,7 +519,7 @@ function updateServicesTab() {
     }
 
     try {
-        const services = window.appState?.services || [];
+        const services = appState.services || [];  // ALTERADO
         servicesCountEl.textContent = services.length;
 
         if (services.length === 0) {
@@ -541,12 +549,12 @@ function updateServicesTab() {
                     <div class="service-status ${statusClass}">${statusText}</div>
                     <div class="client-actions">
                         <button class="action-btn action-edit"
-                                onclick="window.editService('${service.id}')"
+                                onclick="editService('${service.id}')"
                                 title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>
                         <button class="action-btn ${isActive ? 'action-remove' : 'action-whatsapp'}"
-                                onclick="${isActive ? `window.deactivateService('${service.id}')` : `window.activateService('${service.id}')`}"
+                                onclick="${isActive ? `deactivateService('${service.id}')` : `activateService('${service.id}')`}"
                                 title="${isActive ? 'Desativar' : 'Ativar'}">
                             <i class="fas fa-${isActive ? 'ban' : 'check'}"></i>
                         </button>
@@ -575,7 +583,7 @@ function updateClientsTab() {
     }
 
     try {
-        const clients = window.appState?.clients || [];
+        const clients = appState.clients || [];  // ALTERADO
         clientsCountEl.textContent = clients.length;
 
         if (clients.length === 0) {
@@ -601,12 +609,12 @@ function updateClientsTab() {
                     <div class="client-date">${totalAppointments} agendamentos</div>
                     <div class="client-actions">
                         <button class="action-btn action-whatsapp"
-                                onclick="window.sendWhatsAppToClient('${phone}')"
+                                onclick="sendWhatsAppToClient('${phone}')"
                                 title="Enviar WhatsApp">
                             <i class="fab fa-whatsapp"></i>
                         </button>
                         <button class="action-btn action-edit"
-                                onclick="window.editClient('${client.id}')"
+                                onclick="editClient('${client.id}')"
                                 title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>

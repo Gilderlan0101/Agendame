@@ -15,7 +15,11 @@ import {
     loadServices
 } from './services.js';
 import { openNewAppointmentModal, saveNewAppointment } from './modals.js';
-import { loadAppointments } from './appointments.js';
+import {
+    loadAppointments,
+    editAppointment,  // ADICIONE ESTA LINHA
+} from './appointments.js';
+
 import { sendWhatsAppReminder, sendWhatsAppToClient } from './whatsapp.js';
 import {
     saveCompanyInfo,
@@ -263,3 +267,4 @@ window.saveCompanyInfo = saveCompanyInfo;
 window.copyCompanyUrl = copyCompanyUrl;
 window.closeModal = closeModal;
 window.refreshData = refreshData; // Exportar refreshData
+window.editAppointment = editAppointment;

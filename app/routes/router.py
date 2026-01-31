@@ -28,8 +28,8 @@ def register_routes(app: FastAPI) -> None:
     # from app.routes.agendame_company.remove_or_upgrad_service import (
     #     router as remove_service_router,
     from app.routes.agendame_company.appointments import (
-        router as appointments_router,
-    )
+         router as appointments_router,
+     )
     from app.routes.agendame_company.info_company import router as info_company
     from app.routes.agendame_company.register_services import (
         router as create_services_router,
@@ -40,8 +40,14 @@ def register_routes(app: FastAPI) -> None:
 
     app.include_router(create_services_router)
     app.include_router(adm_services_router)
+    # Agendamento no salão
     app.include_router(appointments_router)
     app.include_router(info_company)
 
     # PARA CLIENTES
     app.include_router(public_routes)
+
+    # CHAT
+    from app.routes.agendame import router  as agendame_chat_router
+    app.include_router(agendame_chat_router, prefix="", tags=["agendame_chat"])  # Adicionado aqui
+

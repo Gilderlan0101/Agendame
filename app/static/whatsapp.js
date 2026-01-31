@@ -13,7 +13,6 @@ import { appState } from './appState.js';
  */
 export function sendWhatsAppReminder(appointmentId, phone = null) {
     try {
-        console.log('Enviando lembrete WhatsApp para agendamento:', appointmentId);
 
         // Buscar informações do agendamento
         let appointment = null;
@@ -33,7 +32,6 @@ export function sendWhatsAppReminder(appointmentId, phone = null) {
             return;
         }
 
-        console.log('Agendamento encontrado:', appointment);
 
         // Usar telefone fornecido ou buscar do agendamento
         const clientPhone = phone ||
@@ -109,7 +107,6 @@ export function sendWhatsAppReminder(appointmentId, phone = null) {
  */
 export function sendWhatsAppToClient(phone, customMessage = null) {
     try {
-        console.log('Enviando WhatsApp para cliente:', phone);
 
         // Validar telefone
         if (!phone) {
@@ -152,7 +149,6 @@ export function sendWhatsAppToClient(phone, customMessage = null) {
  */
 export function sendAppointmentConfirmation(appointmentData) {
     try {
-        console.log('Enviando confirmação de agendamento:', appointmentData);
 
         const {
             clientName,
@@ -233,12 +229,7 @@ export function sendWhatsAppMessage(phone, message, metadata = {}) {
         const encodedMessage = encodeURIComponent(message);
         const whatsappURL = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
 
-        console.log('Enviando WhatsApp:', {
-            to: whatsappNumber,
-            messageLength: message.length,
-            metadata,
-            url: whatsappURL.substring(0, 100) + '...'
-        });
+
 
         // Abrir WhatsApp em nova aba
         window.open(whatsappURL, '_blank', 'noopener,noreferrer');
@@ -247,7 +238,6 @@ export function sendWhatsAppMessage(phone, message, metadata = {}) {
         showAlert('WhatsApp aberto! A mensagem está pronta para envio.', 'success');
 
         // Opcional: Log no console para debug
-        console.log('📱 Mensagem WhatsApp pronta:', '\n' + message);
 
         // Opcional: Marcar como enviado no backend (se tiver API)
         // markWhatsAppAsSent(metadata);
@@ -366,7 +356,6 @@ async function markWhatsAppAsSent(metadata) {
                 })
             });
 
-            console.log('WhatsApp marcado como enviado para:', metadata.appointmentId);
         }
     } catch (error) {
         console.error('Erro ao marcar WhatsApp como enviado:', error);

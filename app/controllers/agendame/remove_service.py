@@ -1,6 +1,5 @@
-from fastapi import HTTPException, status
-
 from app.models.user import Service
+from fastapi import HTTPException, status
 
 
 async def remove_service(service_id: int, user_id: int):

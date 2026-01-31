@@ -1,6 +1,6 @@
 import { appState } from './appState.js';
 import { allAppointmentsCount, allAppointmentsList } from './domElements.js';
-import { setLoading, showAlert } from './utils.js';
+import { setLoading, showAlert, closeModal } from './utils.js'; // IMPORTAR closeModal DO utils.js
 
 // Funções auxiliares
 function formatDate(dateString) {
@@ -49,11 +49,6 @@ const statusMap = {
     'no_show': { text: 'Não Compareceu', class: 'status-no-show' }
 };
 
-
-// função global que guarda a quantiade de agendamentos ativos
-
-
-
 // Carregar todos os agendamentos da empresa
 export async function loadAppointments(filters = {}) {
     setLoading(true);
@@ -83,7 +78,6 @@ export async function loadAppointments(filters = {}) {
         const queryString = queryParams.toString();
         const url = `/company/appointments${queryString ? `?${queryString}` : ''}`;
 
-
         const response = await fetch(url, {
             method: 'GET',
             headers: {
@@ -98,9 +92,6 @@ export async function loadAppointments(filters = {}) {
             // Armazenar no estado da aplicação
             appState.appointments = data.appointments || [];
             appState.totalAppointments = data.total || 0;
-
-            // Salva a quandide de agendametos
-
 
             // Atualizar contador
             if (allAppointmentsCount) {
@@ -363,7 +354,6 @@ async function markWhatsAppAsSent(appointmentId) {
         //     }
         // });
 
-
         // Atualizar localmente
         const appointment = getAppointmentById(appointmentId);
         if (appointment) {
@@ -473,16 +463,178 @@ export function viewAppointmentDetails(appointmentId) {
     showModal('Detalhes do Agendamento', detailsHTML);
 }
 
-// Editar agendamento (função stub - implemente conforme necessário)
-export function editAppointment(appointmentId) {
+// Editar agendamento
+export async function editAppointment(appointmentId) {
     const appointment = getAppointmentById(appointmentId);
     if (!appointment) {
         showAlert('Agendamento não encontrado', 'error');
         return;
     }
 
-    // TODO: Implementar lógica de edição
-    showAlert('Funcionalidade de edição em desenvolvimento', 'info');
+    // Se o status não for 'scheduled', não permitir edição
+    // if (appointment.status !== 'scheduled' || appointment.status !== 'confirmed') {
+    //     showAlert('Apenas agendamentos com status "Agendado" podem ser editados', 'warning');
+    //     return;
+    // }
+
+    // Carregar serviços disponíveis para o modal
+    let availableServices = [];
+    try {
+        const response = await fetch('/company/services', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${appState.token}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            availableServices = data.services || [];
+        }
+    } catch (error) {
+        console.error('Erro ao carregar serviços:', error);
+    }
+
+    // Criar conteúdo do modal
+    const modalContent = `
+        <div class="edit-appointment-modal">
+            <form id="editAppointmentForm" class="appointment-form">
+                <div class="form-group">
+                    <label for="clientName">Nome do Cliente *</label>
+                    <input type="text" id="clientName" name="client_name"
+                           value="${appointment.client?.name || appointment.client_name || ''}"
+                           required>
+                </div>
+
+                <div class="form-group">
+                    <label for="clientPhone">Telefone *</label>
+                    <input type="tel" id="clientPhone" name="client_phone"
+                           value="${appointment.client?.phone || appointment.client_phone || ''}"
+                           required>
+                </div>
+
+                <div class="form-group">
+                    <label for="serviceId">Serviço</label>
+                    <select id="serviceId" name="service_id">
+                        <option value="">Selecione um serviço</option>
+                        ${availableServices.map(service => `
+                            <option value="${service.id}"
+                                    ${service.id === appointment.service?.id ? 'selected' : ''}>
+                                ${service.name} - R$ ${parseFloat(service.price || 0).toFixed(2)}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="appointmentDate">Data</label>
+                        <input type="date" id="appointmentDate" name="appointment_date"
+                               value="${appointment.date || appointment.appointment_date || ''}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="appointmentTime">Horário</label>
+                        <input type="time" id="appointmentTime" name="appointment_time"
+                               value="${formatTime(appointment.time || appointment.appointment_time || '')}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="price">Valor</label>
+                    <input type="number" id="price" name="price" step="0.01" min="0"
+                           value="${parseFloat(appointment.service?.price || appointment.price || 0).toFixed(2)}">
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status" name="status">
+                        <option value="scheduled" ${appointment.status === 'scheduled' ? 'selected' : ''}>Agendado</option>
+                        <option value="confirmed" ${appointment.status === 'confirmed' ? 'selected' : ''}>Confirmado</option>
+                        <option value="cancelled" ${appointment.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="notes">Observações</label>
+                    <textarea id="notes" name="notes" rows="3">${appointment.notes || ''}</textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Salvar Alterações
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    // Mostrar modal
+    showModal('Editar Agendamento', modalContent);
+
+    // Adicionar evento de submit
+    const form = document.getElementById('editAppointmentForm');
+    if (form) {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const updateData = {};
+
+            // Coletar dados do formulário
+            for (let [key, value] of formData.entries()) {
+                if (value !== '') {
+                    if (key === 'service_id' || key === 'price') {
+                        updateData[key] = value ? parseFloat(value) : null;
+                    } else if (key === 'client_name' || key === 'client_phone') {
+                        updateData[key] = value.trim();
+                    } else {
+                        updateData[key] = value;
+                    }
+                }
+            }
+
+            try {
+                setLoading(true);
+
+                const response = await fetch(`/agendame/appointments/${appointmentId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${appState.token}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+
+                    showAlert(result.message || 'Agendamento atualizado com sucesso!', 'success');
+
+                    // Fechar modal usando a função do utils.js
+                    closeModal();
+
+                    // Recarregar agendamentos
+                    await loadAppointments();
+
+                } else {
+                    const errorData = await response.json();
+                    showAlert(errorData.detail || 'Erro ao atualizar agendamento', 'error');
+                }
+
+            } catch (error) {
+                console.error('Erro ao atualizar agendamento:', error);
+                showAlert('Erro ao atualizar agendamento. Tente novamente.', 'error');
+            } finally {
+                setLoading(false);
+            }
+        });
+    }
 }
 
 // Função para mostrar modal
@@ -499,7 +651,7 @@ export function showModal(title, content) {
 
     // Criar modal
     const modal = document.createElement('div');
-    modal.className = 'modal';
+    modal.className = 'modal-dynamic';
     modal.innerHTML = `
         <div class="modal-header">
             <h3>${title}</h3>
@@ -575,7 +727,7 @@ export async function loadTodayAppointments() {
     });
 }
 
-// Carregar próximos agendamentos (próximos 7 dias)
+// Carregar próximos agendamentos (próximos 7 dias) - CORRIGIDO
 export async function loadUpcomingAppointments() {
     const today = new Date();
     const nextWeek = new Date();
@@ -585,8 +737,8 @@ export async function loadUpcomingAppointments() {
     const endDate = nextWeek.toISOString().split('T')[0];
 
     return await loadAppointments({
-        start_date: start_date,
-        end_date: end_date,
+        start_date: startDate,  // CORRIGIDO: startDate em vez de start_date
+        end_date: endDate,      // CORRIGIDO: endDate em vez de end_date
         status: 'scheduled' // Apenas agendados
     });
 }

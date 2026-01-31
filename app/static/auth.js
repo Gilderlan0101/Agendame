@@ -39,10 +39,6 @@ export function setupLogin() {
 
             const loginData = await response.json();
 
-            // ================================
-            // SALVAR DADOS DO LOGIN RESPONSE
-            // ================================
-
             // 1. TOKEN (do login response)
             appState.token = loginData.access_token;
             localStorage.setItem('agendame_token', loginData.access_token);
@@ -67,6 +63,13 @@ export function setupLogin() {
             // AGORA BUSCAR DADOS COMPLETOS DO /auth/me
             // ================================
             await loadCompleteUserData();
+
+            // ⭐⭐ IMPORTANTE: SALVAR NOME DA EMPRESA AQUI ⭐⭐
+            // Depois de carregar dados completos, temos a company
+            if (appState.company && appState.company.name) {
+                localStorage.setItem('business_name', appState.company.name);
+                console.log('Nome da empresa salvo:', appState.company.name);
+            }
 
             showAlert('Login realizado com sucesso!', 'success');
             showDashboard();
@@ -125,7 +128,7 @@ async function loadCompleteUserData() {
         // ================================
         appState.company = {
             id: userData.id, // mesmo user_id
-            name: userData.name,
+            name: userData.name, // ⭐⭐ AQUI ESTÁ O NOME DA EMPRESA ⭐⭐
             business_name: userData.name,
             slug: userData.slug,
             email: userData.email,
@@ -141,11 +144,11 @@ async function loadCompleteUserData() {
         localStorage.setItem('agendame_slug', userData.slug);
 
         // ================================
-        // COMPANY INFO (para compatibilidade)
+        // COMPANY INFO
         // ================================
         appState.companyInfo = {
             id: userData.id,
-            name: userData.name,
+            name: userData.name, // ⭐⭐ AQUI TAMBÉM ⭐⭐
             business_name: userData.name,
             slug: userData.slug,
             email: userData.email,
@@ -155,13 +158,19 @@ async function loadCompleteUserData() {
         localStorage.setItem('agendame_company_info', JSON.stringify(appState.companyInfo));
 
         // ================================
+        // ⭐⭐ SALVAR NOME DA EMPRESA SEPARADAMENTE ⭐⭐
+        // ================================
+        if (userData.name) {
+            localStorage.setItem('business_name', userData.name);
+            console.log('Nome da empresa configurado:', userData.name);
+        }
+
+        // ================================
         // ATUALIZAR UI
         // ================================
         if (userName) {
             userName.textContent = userData.username || userData.name || userData.email || 'Usuário';
         }
-
-
 
         return userData;
 
@@ -189,17 +198,21 @@ export async function loadUserSession() {
         // Carregar dados completos do /auth/me
         await loadCompleteUserData();
 
+        // ⭐⭐ Verificar se business_name está salvo
+        let businessName = localStorage.getItem('business_name');
+        if (!businessName && appState.company?.name) {
+            localStorage.setItem('business_name', appState.company.name);
+            console.log('Business name recuperado do appState:', appState.company.name);
+        }
+
         showDashboard();
         console.log('Sessão carregada com sucesso');
 
     } catch (error) {
         console.error('Erro ao carregar sessão:', error);
         showAlert('Sessão expirada. Faça login novamente.', 'error');
-
-        // Limpar tudo
         clearSession();
         showLogin();
-
     } finally {
         setLoading(false);
     }
@@ -227,6 +240,7 @@ function clearSession() {
     localStorage.removeItem('agendame_company');
     localStorage.removeItem('agendame_slug');
     localStorage.removeItem('agendame_company_info');
+    localStorage.removeItem('business_name'); // ⭐⭐ LIMPAR TAMBÉM ⭐⭐
 
     // Limpar appState
     appState.token = null;
@@ -280,11 +294,39 @@ export function getCompanySlug() {
 }
 
 export function getCompanyName() {
-    return appState.user?.name || appState.user?.business_name || '';
+    // ⭐⭐ MÚLTIPLAS FORMAS DE PEGAR O NOME ⭐⭐
+    return appState.company?.name ||
+           appState.user?.name ||
+           appState.user?.business_name ||
+           localStorage.getItem('business_name') ||
+           '';
 }
 
 // ================================
-// VALIDAR SESSÃO (usar antes de chamadas API)
+// FUNÇÃO ESPECÍFICA PARA PEGAR BUSINESS NAME
+// ================================
+export function getBusinessName() {
+    // 1. Tenta do localStorage primeiro
+    let businessName = localStorage.getItem('business_name');
+
+    // 2. Se não tiver, tenta do appState
+    if (!businessName) {
+        businessName = appState.company?.name ||
+                      appState.user?.name ||
+                      appState.user?.business_name ||
+                      'Minha Empresa';
+
+        // Salva no localStorage para uso futuro
+        if (businessName !== 'Minha Empresa') {
+            localStorage.setItem('business_name', businessName);
+        }
+    }
+
+    return businessName;
+}
+
+// ================================
+// VALIDAR SESSÃO
 // ================================
 export function validateSession() {
     if (!isAuthenticated()) {

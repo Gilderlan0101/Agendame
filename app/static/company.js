@@ -6,8 +6,8 @@ import {
     companyType,
     companyPhone,
     companyWhatsApp,
-    companySlug,
-    companyUrl
+    companySlug, // Este é o INPUT
+    companyUrl   // Este é o SPAN
 } from './domElements.js';
 import { setLoading, showAlert } from './utils.js';
 
@@ -51,7 +51,7 @@ export async function getCompanySlug() {
 
         localStorage.setItem('agendame_company', JSON.stringify(appState.company));
 
-        return data.slug;
+        return data.slug || data.business_slug;
 
     } catch (error) {
         console.error('Erro ao obter slug da empresa:', error);
@@ -66,51 +66,101 @@ export async function loadCompanyInfo() {
     setLoading(true);
 
     try {
+        // Primeiro, tentar obter o slug do usuário
         const slug = await getCompanySlug();
 
         if (!slug) {
-            throw new Error('Empresa não vinculada ao usuário');
+            // Fallback: buscar informações do usuário diretamente
+            const response = await apiFetch('/auth/me');
+
+            if (!response.ok) {
+                throw new Error('Falha ao buscar dados do usuário');
+            }
+
+            const userData = await response.json();
+
+            // Preencher com dados do usuário
+            appState.company = {
+                name: userData.business_name || '',
+                type: userData.business_type || '',
+                phone: userData.phone || '',
+                whatsapp: userData.whatsapp || '',
+                slug: userData.business_slug || '',
+                url_default: userData.business_slug || ''
+            };
+        } else {
+            // Se tem slug, buscar informações completas da empresa
+            const response = await apiFetch(`/agendame/${slug}/info`);
+
+            if (!response.ok) {
+                throw new Error('Falha ao buscar dados da empresa');
+            }
+
+            const company = await response.json();
+            appState.company = company;
         }
 
-        const response = await apiFetch(`/agendame/${slug}/info`);
-
-        if (!response.ok) {
-            throw new Error('Falha ao buscar dados da empresa');
+        // ================================
+        // UI UPDATE
+        // ================================
+        if (companyName) {
+            companyName.value = appState.company?.name || appState.company?.business_name || '';
         }
 
-        const company = await response.json();
+        if (companyType) {
+            companyType.value = appState.company?.type || appState.company?.business_type || '';
+        }
 
+        if (companyPhone) {
+            companyPhone.value = appState.company?.phone || '';
+        }
 
-        // ================================
-        // STATE
-        // ================================
-        appState.company = company;
-        localStorage.setItem('agendame_company', JSON.stringify(company));
-        localStorage.setItem('agendame_slug', company.slug);
+        if (companyWhatsApp) {
+            companyWhatsApp.value = appState.company?.whatsapp || '';
+        }
 
+        if (companySlug) {
+            // O INPUT recebe apenas o slug
+            companySlug.value = appState.company?.slug || appState.company?.business_slug || '';
+        }
 
-        // ================================
-        // UI
-        // ================================
-        companyName.value = company.name || '';
-        companyType.value = company.type || '';
-        companyPhone.value = company.phone || '';
-        companyWhatsApp.value = company.whatsapp || '';
-        companySlug.value = company.companySlug || '';
-        companyUrl.value = company.url_default || '';
+        if (companyUrl) {
+            // O SPAN recebe a URL completa
+            const baseUrl = window.location.origin;
+            const slug = appState.company?.slug || appState.company?.business_slug || '';
+            if (slug) {
+                companyUrl.textContent = `${baseUrl}/agendame/${slug}`;
+            } else {
+                companyUrl.textContent = 'URL não disponível';
+            }
+        }
 
-
-        const baseUrl = window.location.origin;
-        companyUrl.textContent = `${baseUrl}/agendame/${company.slug}`;
+        // Salvar no localStorage para consistência
+        localStorage.setItem('agendame_company', JSON.stringify(appState.company));
+        if (appState.company?.slug || appState.company?.business_slug) {
+            localStorage.setItem('agendame_slug', appState.company.slug || appState.company.business_slug);
+        }
 
     } catch (error) {
-        console.error(error);
+        console.error('Erro ao carregar informações da empresa:', error);
         showAlert('Erro ao carregar dados da empresa', 'error');
 
-        // fallback mínimo
-        if (appState.company) {
-            companyName.value = appState.company.name || '';
-            companySlug.value = appState.company.companySlug || '';
+        // Fallback: usar dados do localStorage
+        const storedCompany = localStorage.getItem('agendame_company');
+        if (storedCompany) {
+            try {
+                appState.company = JSON.parse(storedCompany);
+
+                if (companyName) companyName.value = appState.company?.name || '';
+                if (companySlug) companySlug.value = appState.company?.slug || '';
+                if (companyUrl) {
+                    const baseUrl = window.location.origin;
+                    const slug = appState.company?.slug || '';
+                    companyUrl.textContent = slug ? `${baseUrl}/agendame/${slug}` : 'URL não disponível';
+                }
+            } catch (e) {
+                console.error('Erro ao parsear empresa do localStorage:', e);
+            }
         }
 
     } finally {
@@ -125,38 +175,65 @@ export async function saveCompanyInfo() {
     setLoading(true);
 
     try {
-        if (!appState.company?.slug) {
-            throw new Error('Empresa não identificada');
-        }
-
         const payload = {
-            name: companyName.value,
-            type: companyType.value,
-            phone: companyPhone.value,
-            whatsapp: companyWhatsApp.value
+            name: companyName?.value || '',
+            business_name: companyName?.value || '',
+            type: companyType?.value || '',
+            business_type: companyType?.value || '',
+            phone: companyPhone?.value || '',
+            whatsapp: companyWhatsApp?.value || ''
         };
 
-        const response = await apiFetch(
-            `/agendame/${appState.company.slug}/update`,
-            {
+        // Tentar salvar via endpoint de empresa
+        let response;
+        if (appState.company?.slug) {
+            response = await apiFetch(`/agendame/${appState.company.slug}/update`, {
                 method: 'PUT',
                 body: JSON.stringify(payload)
-            }
-        );
+            });
+        } else {
+            // Fallback: atualizar usuário
+            response = await apiFetch('/auth/update', {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+        }
 
         if (!response.ok) {
             throw new Error('Falha ao salvar dados da empresa');
         }
 
-        const updated = await response.json();
+        const result = await response.json();
 
-        appState.company = updated.company;
+        // Atualizar estado
+        if (result.user) {
+            appState.company = {
+                ...appState.company,
+                ...result.user,
+                name: result.user.business_name,
+                type: result.user.business_type,
+                slug: result.user.business_slug
+            };
+        } else if (result.company) {
+            appState.company = result.company;
+        }
+
+        // Atualizar localStorage
         localStorage.setItem('agendame_company', JSON.stringify(appState.company));
+        if (appState.company?.slug) {
+            localStorage.setItem('agendame_slug', appState.company.slug);
+        }
+
+        // Atualizar URL
+        if (companyUrl && appState.company?.slug) {
+            const baseUrl = window.location.origin;
+            companyUrl.textContent = `${baseUrl}/agendame/${appState.company.slug}`;
+        }
 
         showAlert('Dados da empresa atualizados com sucesso!', 'success');
 
     } catch (error) {
-        console.error(error);
+        console.error('Erro ao salvar informações da empresa:', error);
         showAlert(error.message || 'Erro ao salvar empresa', 'error');
     } finally {
         setLoading(false);
@@ -167,14 +244,28 @@ export async function saveCompanyInfo() {
 // COPY URL
 // ================================
 export function copyCompanyUrl() {
-    const url = companyUrl.textContent;
+    const urlText = companyUrl?.textContent;
+    const urlInput = companySlug?.value;
 
-    if (!url) {
+    // Tentar pegar do span primeiro, depois do input
+    const urlToCopy = urlText || (urlInput ? `${window.location.origin}/agendame/${urlInput}` : '');
+
+    if (!urlToCopy || urlToCopy === 'Carregando...' || urlToCopy === 'URL não disponível') {
         showAlert('URL da empresa não disponível', 'warning');
         return;
     }
 
-    navigator.clipboard.writeText(url).then(() => {
+    navigator.clipboard.writeText(urlToCopy).then(() => {
         showAlert('URL copiada para a área de transferência!', 'success');
+    }).catch(err => {
+        console.error('Erro ao copiar URL:', err);
+        showAlert('Erro ao copiar URL', 'error');
     });
 }
+
+// ================================
+// EXPORT FUNCTIONS TO WINDOW
+// ================================
+window.loadCompanyInfo = loadCompanyInfo;
+window.saveCompanyInfo = saveCompanyInfo;
+window.copyCompanyUrl = copyCompanyUrl;
