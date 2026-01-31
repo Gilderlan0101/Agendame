@@ -87,11 +87,6 @@ export async function loadCompanyInfo() {
         appState.company = company;
         localStorage.setItem('agendame_company', JSON.stringify(company));
         localStorage.setItem('agendame_slug', company.slug);
-        console.log(company.slug)
-        console.log(company.slug)
-        console.log(company.slug)
-        console.log(company.slug)
-        console.log(company.slug)
 
 
         // ================================

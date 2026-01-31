@@ -13,8 +13,22 @@ function formatDate(dateString) {
     }
 }
 
+function formatTime(timeString) {
+    if (!timeString) return '';
+    try {
+        // Formatar para HH:MM
+        if (timeString.includes(':')) {
+            return timeString.substring(0, 5);
+        }
+        return timeString;
+    } catch (e) {
+        return timeString;
+    }
+}
+
 function formatPhone(phone) {
     if (!phone) return 'Não informado';
+
     // Remove caracteres não numéricos
     const cleaned = phone.toString().replace(/\D/g, '');
 
@@ -26,60 +40,80 @@ function formatPhone(phone) {
     return phone;
 }
 
-// Carregar todos os agendamentos
-export async function loadAppointments(date = null, isDashboard = false) {
+// Mapeamento de status
+const statusMap = {
+    'scheduled': { text: 'Agendado', class: 'status-scheduled' },
+    'confirmed': { text: 'Confirmado', class: 'status-confirmed' },
+    'completed': { text: 'Concluído', class: 'status-completed' },
+    'cancelled': { text: 'Cancelado', class: 'status-cancelled' },
+    'no_show': { text: 'Não Compareceu', class: 'status-no-show' }
+};
+
+
+// função global que guarda a quantiade de agendamentos ativos
+
+
+
+// Carregar todos os agendamentos da empresa
+export async function loadAppointments(filters = {}) {
     setLoading(true);
 
     try {
-        // Data é obrigatória - usar data atual se não fornecida
-        const useDate = date || new Date().toISOString().split('T')[0];
+        // Construir query string baseada nos filtros
+        const queryParams = new URLSearchParams();
 
-        // Preparar dados para a requisição
-        const requestData = {
-            date: useDate,
-            offset: 0,
-            limit: 100,
-            // status: 'scheduled' // Descomente se quiser filtrar por status específico
-        };
+        if (filters.start_date) {
+            queryParams.append('start_date', filters.start_date);
+        }
 
-        const response = await fetch('/appointments', {
-            method: 'POST',
+        if (filters.end_date) {
+            queryParams.append('end_date', filters.end_date);
+        }
+
+        if (filters.status && filters.status !== 'all') {
+            queryParams.append('status', filters.status);
+        }
+
+        if (filters.date) {
+            // Para filtro de data única, usar como start_date e end_date
+            queryParams.append('start_date', filters.date);
+            queryParams.append('end_date', filters.date);
+        }
+
+        const queryString = queryParams.toString();
+        const url = `/company/appointments${queryString ? `?${queryString}` : ''}`;
+
+
+        const response = await fetch(url, {
+            method: 'GET',
             headers: {
                 'Authorization': `Bearer ${appState.token}`,
-                'Content-Type': 'application/json',
                 'Accept': 'application/json'
-            },
-            body: JSON.stringify(requestData)
+            }
         });
 
         if (response.ok) {
             const data = await response.json();
-            console.log('Dados recebidos da API:', data);
 
-            if (isDashboard) {
-                // Para dashboard, usar apenas agendamentos de hoje
-                const today = new Date().toISOString().split('T')[0];
-                appState.todayAppointments = (data.appointments || []).filter(
-                    app => app.appointment_date && app.appointment_date.includes(today)
-                );
+            // Armazenar no estado da aplicação
+            appState.appointments = data.appointments || [];
+            appState.totalAppointments = data.total || 0;
 
-                // Se estiver no dashboard, renderize os agendamentos de hoje
-                if (allAppointmentsList) {
-                    renderAppointments(appState.todayAppointments, allAppointmentsList, true);
-                }
-            } else {
-                // Para a lista completa
-                appState.appointments = data.appointments || [];
-                appState.pagination = data.pagination || {};
+            // Salva a quandide de agendametos
 
-                if (allAppointmentsCount) {
-                    allAppointmentsCount.textContent = data.pagination?.total || appState.appointments.length;
-                }
-                if (allAppointmentsList) {
-                    renderAppointments(appState.appointments, allAppointmentsList, false);
-                }
+
+            // Atualizar contador
+            if (allAppointmentsCount) {
+                allAppointmentsCount.textContent = data.total || appState.appointments.length;
             }
+
+            // Renderizar lista
+            if (allAppointmentsList) {
+                renderAppointments(appState.appointments, allAppointmentsList);
+            }
+
             return data;
+
         } else {
             let errorMessage = 'Erro ao carregar agendamentos';
             try {
@@ -114,8 +148,8 @@ export async function loadAppointments(date = null, isDashboard = false) {
     }
 }
 
-// Renderizar agendamentos - CORRIGIDO
-export function renderAppointments(appointments, container, isCompact = true) {
+// Renderizar agendamentos - ATUALIZADO para novo formato
+export function renderAppointments(appointments, container, isCompact = false) {
     if (!container) return;
 
     if (!appointments || appointments.length === 0) {
@@ -123,115 +157,129 @@ export function renderAppointments(appointments, container, isCompact = true) {
             <div class="empty-state">
                 <i class="fas fa-calendar-times"></i>
                 <h3>Nenhum agendamento encontrado</h3>
-                <p>${isCompact ? 'Não há agendamentos próximos' : 'Não há agendamentos para esta data'}</p>
+                <p>${isCompact ? 'Não há agendamentos próximos' : 'Não há agendamentos para o período selecionado'}</p>
             </div>
         `;
         return;
     }
 
     container.innerHTML = appointments.map(app => {
-        // Garantir que temos valores válidos
+        // Extrair dados do novo formato
         const appId = app.id || 0;
         const status = app.status || 'scheduled';
-        const statusClass = `status-${status}`;
+        const statusInfo = statusMap[status] || statusMap.scheduled;
 
-        // Texto do status
-        let statusText = 'Agendado';
-        switch(status) {
-            case 'confirmed': statusText = 'Confirmado'; break;
-            case 'completed': statusText = 'Concluído'; break;
-            case 'cancelled': statusText = 'Cancelado'; break;
-            case 'no_show': statusText = 'Não Compareceu'; break;
-            default: statusText = 'Agendado';
-        }
+        // Dados do cliente
+        const clientName = app.client?.name || app.client_name || 'Cliente não informado';
+        const clientPhone = app.client?.phone || app.client_phone || '';
+        const clientId = app.client?.client_id || app.client_id || null;
 
-        const price = parseFloat(app.price) || 0;
-        const date = app.appointment_date ? formatDate(app.appointment_date) : 'Data não informada';
-        const time = app.appointment_time || 'Horário não informado';
-        const clientName = app.client_name || app.client_full_name || 'Cliente não informado';
-        const serviceName = app.service_name || 'Serviço não informado';
-        const clientPhone = app.client_phone || '';
+        // Dados do serviço
+        const serviceName = app.service?.name || app.service_name || 'Serviço não informado';
+        const serviceId = app.service?.id || app.service_id || null;
+        const servicePrice = parseFloat(app.service?.price || app.price || 0);
+
+        // Dados do agendamento
+        const appointmentDate = app.date || app.appointment_date || '';
+        const appointmentTime = app.time || app.appointment_time || '';
         const notes = app.notes || '';
-        const whatsappSent = app.whatsapp_sent || false;
+        const createdAt = app.created_at || '';
 
-        // Formatar preço
-        const formattedPrice = price.toLocaleString('pt-BR', {
+        // Formatações
+        const formattedDate = formatDate(appointmentDate);
+        const formattedTime = formatTime(appointmentTime);
+        const formattedPrice = servicePrice.toLocaleString('pt-BR', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
+        const formattedPhone = formatPhone(clientPhone);
+        const formattedCreatedAt = createdAt ? new Date(createdAt).toLocaleString('pt-BR') : '';
 
-        // Escapar caracteres especiais para o onclick
+        // Escapar caracteres especiais para eventos
         const safeClientPhone = clientPhone.toString().replace(/'/g, "\\'");
         const safeClientName = clientName.toString().replace(/'/g, "\\'");
         const safeServiceName = serviceName.toString().replace(/'/g, "\\'");
 
-        // Função para criar mensagem padrão do WhatsApp
-        const createWhatsAppMessage = () => {
-            const message = encodeURIComponent(
-                `Olá ${clientName}! Lembrete do seu agendamento:\n` +
-                `📅 Data: ${date}\n` +
-                `⏰ Horário: ${time}\n` +
-                `💇 Serviço: ${serviceName}\n` +
-                `💰 Valor: R$ ${formattedPrice}\n\n` +
-                `Por favor, confirme sua presença.`
-            );
-            return message;
-        };
-
         if (isCompact) {
+            // Layout compacto (para dashboards)
             return `
                 <div class="client-item" data-appointment-id="${appId}">
                     <div class="client-info">
                         <div class="client-name">${clientName}</div>
                         <div class="client-service">${serviceName}</div>
                         <div class="client-details">
-                            <span class="client-date"><i class="far fa-calendar"></i> ${date}</span>
-                            <span class="client-time"><i class="far fa-clock"></i> ${time}</span>
+                            <span class="client-date"><i class="far fa-calendar"></i> ${formattedDate}</span>
+                            <span class="client-time"><i class="far fa-clock"></i> ${formattedTime}</span>
                             <span class="client-price"><i class="fas fa-money-bill-wave"></i> R$ ${formattedPrice}</span>
                         </div>
                     </div>
                     <div class="client-actions">
-                        <span class="client-status ${statusClass}">${statusText}</span>
+                        <span class="client-status ${statusInfo.class}">${statusInfo.text}</span>
                         ${clientPhone ? `
-                        <button class="action-btn action-whatsapp ${whatsappSent ? 'whatsapp-sent' : ''}"
-                                onclick="sendWhatsAppReminder(${appId}, '${safeClientPhone}', '${safeClientName}', '${date}', '${time}', '${safeServiceName}', ${price})"
-                                title="${whatsappSent ? 'Lembrete já enviado' : 'Enviar lembrete por WhatsApp'}">
+                        <button class="action-btn action-whatsapp"
+                                onclick="sendWhatsAppReminder(${appId}, '${safeClientPhone}', '${safeClientName}', '${formattedDate}', '${formattedTime}', '${safeServiceName}', ${servicePrice})"
+                                title="Enviar lembrete por WhatsApp">
                             <i class="fab fa-whatsapp"></i>
-                            ${whatsappSent ? '<span class="whatsapp-check">✓</span>' : ''}
                         </button>
                         ` : ''}
                     </div>
                 </div>
             `;
         } else {
+            // Layout completo (para lista de agendamentos)
             return `
                 <div class="client-item" data-appointment-id="${appId}">
                     <div class="client-info">
-                        <div class="client-name">${clientName}</div>
-                        <div class="client-service">${serviceName}</div>
+                        <div class="client-header">
+                            <div class="client-name">${clientName}</div>
+                            <div class="client-service">${serviceName}</div>
+                        </div>
                         <div class="client-details">
-                            <span class="client-phone"><i class="fas fa-phone"></i> ${formatPhone(clientPhone)}</span>
-                            <span class="client-date"><i class="far fa-calendar"></i> ${date}</span>
-                            <span class="client-time"><i class="far fa-clock"></i> ${time}</span>
-                            <span class="client-price"><i class="fas fa-money-bill-wave"></i> R$ ${formattedPrice}</span>
-                            ${notes ? `<span class="client-notes"><i class="fas fa-sticky-note"></i> ${notes}</span>` : ''}
+                            <div class="detail-group">
+                                <span class="detail-label"><i class="fas fa-phone"></i> Telefone:</span>
+                                <span class="detail-value">${formattedPhone}</span>
+                            </div>
+                            <div class="detail-group">
+                                <span class="detail-label"><i class="far fa-calendar"></i> Data:</span>
+                                <span class="detail-value">${formattedDate} às ${formattedTime}</span>
+                            </div>
+                            <div class="detail-group">
+                                <span class="detail-label"><i class="fas fa-money-bill-wave"></i> Valor:</span>
+                                <span class="detail-value">R$ ${formattedPrice}</span>
+                            </div>
+                            ${notes ? `
+                            <div class="detail-group">
+                                <span class="detail-label"><i class="fas fa-sticky-note"></i> Observações:</span>
+                                <span class="detail-value">${notes}</span>
+                            </div>
+                            ` : ''}
+                            <div class="detail-group">
+                                <span class="detail-label"><i class="far fa-clock"></i> Criado em:</span>
+                                <span class="detail-value">${formattedCreatedAt}</span>
+                            </div>
                         </div>
                     </div>
                     <div class="client-actions">
-                        <span class="client-status ${statusClass}">${statusText}</span>
-                        ${clientPhone ? `
-                        <button class="action-btn action-whatsapp ${whatsappSent ? 'whatsapp-sent' : ''}"
-                                onclick="sendWhatsAppReminder(${appId}, '${safeClientPhone}', '${safeClientName}', '${date}', '${time}', '${safeServiceName}', ${price})"
-                                title="${whatsappSent ? 'Lembrete já enviado' : 'Enviar lembrete por WhatsApp'}">
-                            <i class="fab fa-whatsapp"></i>
-                            ${whatsappSent ? '<span class="whatsapp-check">✓</span>' : ''}
-                        </button>
-                        ` : ''}
-                        <button class="action-btn action-view"
-                                onclick="viewAppointmentDetails(${appId})"
-                                title="Ver detalhes">
-                            <i class="fas fa-eye"></i>
-                        </button>
+                        <span class="client-status ${statusInfo.class}">${statusInfo.text}</span>
+                        <div class="action-buttons">
+                            ${clientPhone ? `
+                            <button class="action-btn action-whatsapp"
+                                    onclick="sendWhatsAppReminder(${appId}, '${safeClientPhone}', '${safeClientName}', '${formattedDate}', '${formattedTime}', '${safeServiceName}', ${servicePrice})"
+                                    title="Enviar lembrete por WhatsApp">
+                                <i class="fab fa-whatsapp"></i>
+                            </button>
+                            ` : ''}
+                            <button class="action-btn action-view"
+                                    onclick="viewAppointmentDetails(${appId})"
+                                    title="Ver detalhes">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="action-btn action-edit"
+                                    onclick="editAppointment(${appId})"
+                                    title="Editar agendamento">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -252,43 +300,10 @@ export async function searchAppointments(filters = {}) {
     setLoading(true);
 
     try {
-        const requestData = {
-            date: filters.date || new Date().toISOString().split('T')[0],
-            offset: filters.offset || 0,
-            limit: filters.limit || 100
-        };
+        // Chama a função loadAppointments com os filtros
+        const result = await loadAppointments(filters);
+        return result;
 
-        // Adicionar status apenas se especificado
-        if (filters.status && filters.status !== 'all') {
-            requestData.status = filters.status;
-        }
-
-        const response = await fetch('/appointments', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${appState.token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(requestData)
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            appState.appointments = data.appointments || [];
-            appState.pagination = data.pagination || {};
-
-            if (allAppointmentsCount) {
-                allAppointmentsCount.textContent = data.pagination?.total || appState.appointments.length;
-            }
-            if (allAppointmentsList) {
-                renderAppointments(appState.appointments, allAppointmentsList, false);
-            }
-            return data;
-        } else {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || 'Erro ao buscar agendamentos');
-        }
     } catch (error) {
         console.error('Erro ao buscar agendamentos:', error);
         showAlert(error.message || 'Erro ao buscar agendamentos', 'error');
@@ -298,7 +313,7 @@ export async function searchAppointments(filters = {}) {
     }
 }
 
-// Função para enviar lembrete por WhatsApp - MELHORADA
+// Função para enviar lembrete por WhatsApp
 export function sendWhatsAppReminder(appointmentId, phone, clientName, date = '', time = '', serviceName = '', price = 0) {
     if (!phone) {
         showAlert('Número de telefone não disponível', 'warning');
@@ -335,10 +350,11 @@ export function sendWhatsAppReminder(appointmentId, phone, clientName, date = ''
     }
 }
 
-// Marcar WhatsApp como enviado (mock - você precisa implementar a API)
+// Marcar WhatsApp como enviado (mock - você precisará implementar a API real)
 async function markWhatsAppAsSent(appointmentId) {
     try {
-        // Aqui você faria uma requisição para sua API
+        // TODO: Implementar chamada real à API
+        // Exemplo:
         // await fetch(`/appointments/${appointmentId}/whatsapp`, {
         //     method: 'POST',
         //     headers: {
@@ -347,17 +363,18 @@ async function markWhatsAppAsSent(appointmentId) {
         //     }
         // });
 
+
         // Atualizar localmente
         const appointment = getAppointmentById(appointmentId);
         if (appointment) {
-            appointment.whatsapp_sent = true;
+            appointment.whatsapp_sent = true; // Adicione este campo se existir
         }
     } catch (error) {
         console.error('Erro ao marcar WhatsApp como enviado:', error);
     }
 }
 
-// Ver detalhes do agendamento - MELHORADA
+// Ver detalhes do agendamento
 export function viewAppointmentDetails(appointmentId) {
     const appointment = getAppointmentById(appointmentId);
     if (!appointment) {
@@ -365,77 +382,117 @@ export function viewAppointmentDetails(appointmentId) {
         return;
     }
 
-    // Formatar os dados para exibição
+    // Extrair dados
+    const clientName = appointment.client?.name || appointment.client_name || 'Não informado';
+    const clientPhone = appointment.client?.phone || appointment.client_phone || '';
+    const serviceName = appointment.service?.name || appointment.service_name || 'Não informado';
+    const servicePrice = parseFloat(appointment.service?.price || appointment.price || 0);
+    const appointmentDate = appointment.date || appointment.appointment_date || '';
+    const appointmentTime = appointment.time || appointment.appointment_time || '';
+    const notes = appointment.notes || '';
+    const createdAt = appointment.created_at || '';
+    const status = appointment.status || 'scheduled';
+    const statusInfo = statusMap[status] || statusMap.scheduled;
+
+    // Formatar dados
+    const formattedDate = formatDate(appointmentDate);
+    const formattedTime = formatTime(appointmentTime);
+    const formattedPrice = servicePrice.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+    const formattedPhone = formatPhone(clientPhone);
+    const formattedCreatedAt = createdAt ? new Date(createdAt).toLocaleString('pt-BR') : '';
+
+    // Criar HTML dos detalhes
     const detailsHTML = `
         <div class="appointment-details">
             <h3><i class="fas fa-calendar-check"></i> Detalhes do Agendamento</h3>
-
-            <div class="detail-row">
-                <strong>Cliente:</strong>
-                <span>${appointment.client_name || 'Não informado'}</span>
+            <div class="detail-section">
+                <h4><i class="fas fa-user"></i> Informações do Cliente</h4>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <strong>Nome:</strong>
+                        <span>${clientName}</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Telefone:</strong>
+                        <span>${formattedPhone}</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="detail-row">
-                <strong>Telefone:</strong>
-                <span>${formatPhone(appointment.client_phone || '')}</span>
+            <div class="detail-section">
+                <h4><i class="fas fa-cut"></i> Informações do Serviço</h4>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <strong>Serviço:</strong>
+                        <span>${serviceName}</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Valor:</strong>
+                        <span>R$ ${formattedPrice}</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="detail-row">
-                <strong>Serviço:</strong>
-                <span>${appointment.service_name || 'Não informado'}</span>
+            <div class="detail-section">
+                <h4><i class="fas fa-calendar-alt"></i> Data e Hora</h4>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <strong>Data:</strong>
+                        <span>${formattedDate}</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Hora:</strong>
+                        <span>${formattedTime}</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="detail-row">
-                <strong>Data:</strong>
-                <span>${formatDate(appointment.appointment_date || '')}</span>
-            </div>
-
-            <div class="detail-row">
-                <strong>Horário:</strong>
-                <span>${appointment.appointment_time || 'Não informado'}</span>
-            </div>
-
-            <div class="detail-row">
-                <strong>Valor:</strong>
-                <span>R$ ${(parseFloat(appointment.price) || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-            </div>
-
-            <div class="detail-row">
-                <strong>Status:</strong>
-                <span class="status-${appointment.status || 'scheduled'}">
-                    ${appointment.status === 'scheduled' ? 'Agendado' :
-                      appointment.status === 'confirmed' ? 'Confirmado' :
-                      appointment.status === 'completed' ? 'Concluído' :
-                      appointment.status === 'cancelled' ? 'Cancelado' :
-                      appointment.status === 'no_show' ? 'Não Compareceu' : 'Agendado'}
-                </span>
-            </div>
-
-            ${appointment.notes ? `
-            <div class="detail-row">
-                <strong>Observações:</strong>
-                <span>${appointment.notes}</span>
-            </div>
-            ` : ''}
-
-            <div class="detail-row">
-                <strong>WhatsApp:</strong>
-                <span>${appointment.whatsapp_sent ? '✅ Enviado' : '❌ Não enviado'}</span>
-            </div>
-
-            <div class="detail-row">
-                <strong>Criado em:</strong>
-                <span>${new Date(appointment.created_at || '').toLocaleString('pt-BR')}</span>
+            <div class="detail-section">
+                <h4><i class="fas fa-info-circle"></i> Status e Outras Informações</h4>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <strong>Status:</strong>
+                        <span class="${statusInfo.class}">${statusInfo.text}</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Criado em:</strong>
+                        <span>${formattedCreatedAt}</span>
+                    </div>
+                </div>
+                ${notes ? `
+                <div class="detail-item-full">
+                    <strong>Observações:</strong>
+                    <p>${notes}</p>
+                </div>
+                ` : ''}
             </div>
         </div>
     `;
 
-    // Usar um modal ou alerta customizado
+    // Mostrar modal
     showModal('Detalhes do Agendamento', detailsHTML);
 }
 
-// Função para mostrar modal (simples)
-function showModal(title, content) {
+// Editar agendamento (função stub - implemente conforme necessário)
+export function editAppointment(appointmentId) {
+    const appointment = getAppointmentById(appointmentId);
+    if (!appointment) {
+        showAlert('Agendamento não encontrado', 'error');
+        return;
+    }
+
+    // TODO: Implementar lógica de edição
+    showAlert('Funcionalidade de edição em desenvolvimento', 'info');
+}
+
+// Função para mostrar modal
+export function showModal(title, content) {
+    // Remover modal existente
+    const existingOverlay = document.querySelector('.modal-overlay');
+    if (existingOverlay) {
+        existingOverlay.remove();
+    }
+
     // Criar overlay
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -460,11 +517,6 @@ function showModal(title, content) {
     document.body.appendChild(overlay);
 }
 
-// Função para recarregar agendamentos
-export function reloadAppointments() {
-    return loadAppointments();
-}
-
 // Filtrar agendamentos localmente
 export function filterLocalAppointments(filters) {
     if (!appState.appointments || appState.appointments.length === 0) {
@@ -482,9 +534,10 @@ export function filterLocalAppointments(filters) {
     if (filters.date) {
         const filterDate = new Date(filters.date).toISOString().split('T')[0];
         filtered = filtered.filter(app => {
-            if (!app.appointment_date) return false;
-            const appDate = new Date(app.appointment_date).toISOString().split('T')[0];
-            return appDate === filterDate;
+            const appDate = app.date || app.appointment_date;
+            if (!appDate) return false;
+            const formattedAppDate = new Date(appDate).toISOString().split('T')[0];
+            return formattedAppDate === filterDate;
         });
     }
 
@@ -492,30 +545,67 @@ export function filterLocalAppointments(filters) {
     if (filters.clientName) {
         const searchTerm = filters.clientName.toLowerCase();
         filtered = filtered.filter(app => {
-            const name = (app.client_name || '').toLowerCase();
-            const fullName = (app.client_full_name || '').toLowerCase();
-            return name.includes(searchTerm) || fullName.includes(searchTerm);
+            const client = app.client || {};
+            const name = (client.name || '').toLowerCase();
+            const clientName = (app.client_name || '').toLowerCase();
+            return name.includes(searchTerm) || clientName.includes(searchTerm);
         });
     }
 
     // Filtrar por serviço
     if (filters.serviceName) {
         const searchTerm = filters.serviceName.toLowerCase();
-        filtered = filtered.filter(app =>
-            (app.service_name || '').toLowerCase().includes(searchTerm)
-        );
+        filtered = filtered.filter(app => {
+            const service = app.service || {};
+            const serviceName = (service.name || '').toLowerCase();
+            return serviceName.includes(searchTerm);
+        });
     }
 
     return filtered;
 }
 
+// Carregar agendamentos de hoje (para dashboard)
+export async function loadTodayAppointments() {
+    const today = new Date().toISOString().split('T')[0];
+    return await loadAppointments({
+        start_date: today,
+        end_date: today,
+        status: 'all'
+    });
+}
+
+// Carregar próximos agendamentos (próximos 7 dias)
+export async function loadUpcomingAppointments() {
+    const today = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(today.getDate() + 7);
+
+    const startDate = today.toISOString().split('T')[0];
+    const endDate = nextWeek.toISOString().split('T')[0];
+
+    return await loadAppointments({
+        start_date: start_date,
+        end_date: end_date,
+        status: 'scheduled' // Apenas agendados
+    });
+}
+
+// Função para recarregar agendamentos
+export function reloadAppointments(filters = {}) {
+    return loadAppointments(filters);
+}
+
 // Exportar funções para o escopo global
 window.loadAppointments = loadAppointments;
+window.loadTodayAppointments = loadTodayAppointments;
+window.loadUpcomingAppointments = loadUpcomingAppointments;
 window.renderAppointments = renderAppointments;
 window.getAppointmentById = getAppointmentById;
 window.searchAppointments = searchAppointments;
 window.sendWhatsAppReminder = sendWhatsAppReminder;
 window.viewAppointmentDetails = viewAppointmentDetails;
+window.editAppointment = editAppointment;
 window.reloadAppointments = reloadAppointments;
 window.filterLocalAppointments = filterLocalAppointments;
 window.showModal = showModal;

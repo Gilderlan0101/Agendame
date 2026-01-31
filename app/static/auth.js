@@ -3,7 +3,6 @@
 import { appState } from './appState.js';
 import { userName, loginPage, dashboardPage, loginForm } from './domElements.js';
 import { showAlert, setLoading } from './utils.js';
-import { getCompanySlug } from './company.js';
 
 // ================================
 // LOGIN
@@ -38,50 +37,43 @@ export function setupLogin() {
                 throw new Error(errorMessage);
             }
 
-            const data = await response.json();
+            const loginData = await response.json();
 
             // ================================
-            // TOKEN
+            // SALVAR DADOS DO LOGIN RESPONSE
             // ================================
-            appState.token = data.access_token;
-            localStorage.setItem('agendame_token', data.access_token);
 
-            // ================================
-            // USER STATE
-            // ================================
+            // 1. TOKEN (do login response)
+            appState.token = loginData.access_token;
+            localStorage.setItem('agendame_token', loginData.access_token);
+
+            // 2. Dados básicos do login response
             appState.user = {
-                id: data.user_id,
-                username: data.username,
-                email: data.email,
-                phone: data.phone || null,
-                status: data.status ?? true,
+                id: loginData.user_id || loginData.id,
+                username: loginData.username,
+                email: loginData.email,
+                business_name: loginData.business_name,
+                token_type: loginData.token_type
             };
-
-            // ================================
-            // COMPANY STATE
-            // ================================
-            appState.company = {
-                business_name: data.business_name,
-                slug: data.slog, // vindo do backend
-            };
-
-            // ================================
-            // LOCAL STORAGE (persistência)
-            // ================================
             localStorage.setItem('agendame_user', JSON.stringify(appState.user));
-            localStorage.setItem('agendame_company', JSON.stringify(appState.company));
-            localStorage.setItem('agendame_slug', data.slog);
+
+            // 3. Company slug do login response
+            if (loginData.slog) {
+                appState.companySlug = loginData.slog;
+                localStorage.setItem('agendame_slug', loginData.slog);
+            }
 
             // ================================
-            // UI
+            // AGORA BUSCAR DADOS COMPLETOS DO /auth/me
             // ================================
-            userName.textContent = data.username || data.email || 'Usuário';
+            await loadCompleteUserData();
 
             showAlert('Login realizado com sucesso!', 'success');
             showDashboard();
 
         } catch (error) {
             showAlert(error.message || 'Erro ao fazer login', 'error');
+            console.error('Erro no login:', error);
         } finally {
             setLoading(false);
         }
@@ -89,108 +81,217 @@ export function setupLogin() {
 }
 
 // ================================
+// CARREGAR DADOS COMPLETOS DO USUÁRIO (/auth/me)
+// ================================
+async function loadCompleteUserData() {
+    try {
+        const token = localStorage.getItem('agendame_token');
+
+        if (!token) {
+            throw new Error('Token não encontrado');
+        }
+
+        const response = await fetch('/auth/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Falha ao carregar dados do usuário');
+        }
+
+        const userData = await response.json();
+
+        // ================================
+        // ATUALIZAR USER STATE COM DADOS COMPLETOS
+        // ================================
+        appState.user = {
+            id: userData.id,
+            username: userData.username,
+            email: userData.email,
+            phone: userData.phone || null,
+            status: userData.status ?? true,
+            photo: userData.photo || null,
+            name: userData.name, // "Corte Supremo Barber & Spa"
+            business_name: userData.name, // mesmo que name
+            slug: userData.slug // "corte-supremo-barber-spa"
+        };
+        localStorage.setItem('agendame_user', JSON.stringify(appState.user));
+
+        // ================================
+        // COMPANY STATE
+        // ================================
+        appState.company = {
+            id: userData.id, // mesmo user_id
+            name: userData.name,
+            business_name: userData.name,
+            slug: userData.slug,
+            email: userData.email,
+            phone: userData.phone || null,
+            photo: userData.photo || null
+        };
+        localStorage.setItem('agendame_company', JSON.stringify(appState.company));
+
+        // ================================
+        // COMPANY SLUG
+        // ================================
+        appState.companySlug = userData.slug;
+        localStorage.setItem('agendame_slug', userData.slug);
+
+        // ================================
+        // COMPANY INFO (para compatibilidade)
+        // ================================
+        appState.companyInfo = {
+            id: userData.id,
+            name: userData.name,
+            business_name: userData.name,
+            slug: userData.slug,
+            email: userData.email,
+            phone: userData.phone || null,
+            photo: userData.photo || null
+        };
+        localStorage.setItem('agendame_company_info', JSON.stringify(appState.companyInfo));
+
+        // ================================
+        // ATUALIZAR UI
+        // ================================
+        if (userName) {
+            userName.textContent = userData.username || userData.name || userData.email || 'Usuário';
+        }
+
+
+
+        return userData;
+
+    } catch (error) {
+        console.error('Erro ao carregar dados do usuário:', error);
+        throw error;
+    }
+}
+
+// ================================
+// LOAD SESSION (ao carregar a página)
+// ================================
+export async function loadUserSession() {
+    setLoading(true);
+
+    try {
+        const token = localStorage.getItem('agendame_token');
+
+        if (!token) {
+            throw new Error('Sem sessão ativa');
+        }
+
+        appState.token = token;
+
+        // Carregar dados completos do /auth/me
+        await loadCompleteUserData();
+
+        showDashboard();
+        console.log('Sessão carregada com sucesso');
+
+    } catch (error) {
+        console.error('Erro ao carregar sessão:', error);
+        showAlert('Sessão expirada. Faça login novamente.', 'error');
+
+        // Limpar tudo
+        clearSession();
+        showLogin();
+
+    } finally {
+        setLoading(false);
+    }
+}
+
+// ================================
 // LOGOUT
 // ================================
 export function handleLogout() {
     if (confirm('Deseja sair da sua conta?')) {
-
-        localStorage.removeItem('agendame_token');
-        localStorage.removeItem('agendame_user');
-        localStorage.removeItem('agendame_company');
-        localStorage.removeItem('agendame_slug');
-
-        appState.token = null;
-        appState.user = null;
-        appState.company = null;
-
+        clearSession();
         showAlert('Logout realizado com sucesso!', 'success');
         showLogin();
-        loginForm.reset();
+        if (loginForm) loginForm.reset();
     }
+}
+
+// ================================
+// LIMPAR SESSÃO
+// ================================
+function clearSession() {
+    // Limpar localStorage
+    localStorage.removeItem('agendame_token');
+    localStorage.removeItem('agendame_user');
+    localStorage.removeItem('agendame_company');
+    localStorage.removeItem('agendame_slug');
+    localStorage.removeItem('agendame_company_info');
+
+    // Limpar appState
+    appState.token = null;
+    appState.user = null;
+    appState.company = null;
+    appState.companySlug = null;
+    appState.companyInfo = null;
+    appState.services = [];
+    appState.clients = [];
+    appState.appointments = [];
+    appState.todayAppointments = [];
 }
 
 // ================================
 // UI STATES
 // ================================
 export function showLogin() {
-    loginPage.style.display = 'flex';
-    dashboardPage.style.display = 'none';
+    if (loginPage) loginPage.style.display = 'flex';
+    if (dashboardPage) dashboardPage.style.display = 'none';
 }
 
 export function showDashboard() {
-    loginPage.style.display = 'none';
-    dashboardPage.style.display = 'block';
+    if (loginPage) loginPage.style.display = 'none';
+    if (dashboardPage) dashboardPage.style.display = 'block';
 }
 
 // ================================
-// LOAD SESSION
+// VERIFICAR AUTENTICAÇÃO
 // ================================
-export async function loadUserData() {
-    setLoading(true);
+export function isAuthenticated() {
+    return !!appState.token && !!appState.user;
+}
 
-    try {
-        const token = localStorage.getItem('agendame_token');
+// ================================
+// GETTERS
+// ================================
+export function getToken() {
+    return appState.token;
+}
 
-        if (!token) throw new Error('Sem sessão');
+export function getUser() {
+    return appState.user;
+}
 
-        appState.token = token;
+export function getCompany() {
+    return appState.company;
+}
 
-        const response = await fetch('/auth/me', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+export function getCompanySlug() {
+    return appState.companySlug;
+}
 
-        if (!response.ok) {
-            throw new Error('Sessão expirada');
-        }
+export function getCompanyName() {
+    return appState.user?.name || appState.user?.business_name || '';
+}
 
-        const data = await response.json();
-
-        // ================================
-        // USER STATE
-        // ================================
-        appState.user = {
-            id: data.id,
-            username: data.username,
-            email: data.email,
-            phone: data.phone || null,
-            status: data.status ?? true,
-            photo: data.photo || null,
-            companySlug: data.slog || "SEM"
-        };
-
-        localStorage.setItem('agendame_user', JSON.stringify(appState.user));
-
-        userName.textContent = data.username || data.email || 'Usuário';
-
-        // ================================
-        // COMPANY SLUG
-        // ================================
-        const slug = await getCompanySlug();
-        appState.company = {
-            slug
-        };
-
-        localStorage.setItem('agendame_company', JSON.stringify(appState.company));
-        localStorage.setItem('agendame_slug', slug);
-
-        showDashboard();
-
-    } catch (error) {
+// ================================
+// VALIDAR SESSÃO (usar antes de chamadas API)
+// ================================
+export function validateSession() {
+    if (!isAuthenticated()) {
         showAlert('Sessão expirada. Faça login novamente.', 'error');
-
-        localStorage.removeItem('agendame_token');
-        localStorage.removeItem('agendame_user');
-        localStorage.removeItem('agendame_company');
-        localStorage.removeItem('agendame_slug');
-
-        appState.token = null;
-        appState.user = null;
-        appState.company = null;
-
+        clearSession();
         showLogin();
-    } finally {
-        setLoading(false);
+        return false;
     }
+    return true;
 }

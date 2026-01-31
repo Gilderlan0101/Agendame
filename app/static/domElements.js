@@ -37,3 +37,4 @@ export {
     clientsCount, clientsList, companyName, companyType, companyPhone,
     companyWhatsApp, companySlug, companyUrl
 };
+

@@ -1,8 +1,9 @@
-// main.js - Arquivo principal
+// main.js - Arquivo principal (ATUALIZADO)
+
 // Importar módulos
 import { appState } from './appState.js';
 import { logoutBtn } from './domElements.js';
-import { setupLogin, handleLogout, loadUserData, showLogin } from './auth.js';
+import { setupLogin, handleLogout, showLogin, loadUserSession } from './auth.js';
 import { setLoading, showAlert, closeModal } from './utils.js';
 import {
     openNewServiceModal,
@@ -19,13 +20,21 @@ import { sendWhatsAppReminder, sendWhatsAppToClient } from './whatsapp.js';
 import {
     saveCompanyInfo,
     copyCompanyUrl,
-    loadCompanyInfo as loadCompanyInfoModule,
-    getCompanySlug
+    loadCompanyInfo as loadCompanyInfoModule
 } from './company.js';
-import { refreshData, loadDashboardData } from './dashboard.js';
 import { loadClients } from './clients.js';
 
-// Configurar event listeners
+// IMPORTAR FUNÇÕES DO HOME.JS
+import {
+    initDashboard,
+    refreshDashboard,
+    updateTodayAppointmentsCount,
+    updateAllCounts
+} from './home.js';
+
+// ============================================
+// CONFIGURAÇÃO DE EVENT LISTENERS
+// ============================================
 function setupEventListeners() {
     // Configurar logout
     if (logoutBtn) {
@@ -44,7 +53,7 @@ function setupEventListeners() {
     const dateFilter = document.getElementById('appointmentDateFilter');
     if (dateFilter) {
         dateFilter.addEventListener('change', function() {
-            loadAppointments(this.value);
+            loadAppointments({ date: this.value });
         });
     }
 
@@ -83,48 +92,46 @@ function setupEventListeners() {
     });
 }
 
-// Função para inicializar após login bem-sucedido
+// ============================================
+// INICIALIZAÇÃO APÓS LOGIN
+// ============================================
 async function initializeAfterLogin() {
     try {
-        // Carregar dados do dashboard inicialmente
-        await loadDashboardData();
+        console.log('Inicializando após login...');
 
-        // Configurar auto-refresh se necessário
-        // setupDashboardAutoRefresh(5); // Descomente se quiser auto-refresh
+        // Inicializar dashboard
+        initDashboard();
+
+        // Carregar dados iniciais
+        await Promise.all([
+            loadServices(),
+            loadAppointments(),
+            loadClients()
+        ]);
+
+        // Atualizar todos os contadores
+        updateAllCounts();
+
+        // Atualizar dashboard
+        refreshDashboard();
+
+        // Ativar a tab dashboard por padrão
+        switchTab('dashboard');
+
+        console.log('Sistema inicializado com sucesso');
+
     } catch (error) {
-        console.error('Erro ao inicializar dashboard:', error);
+        console.error('Erro ao inicializar sistema:', error);
+        showAlert('Erro ao carregar dados iniciais', 'error');
     }
 }
 
-// Inicializar a aplicação
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM carregado. Verificando token...');
-
-    // Configurar login
-    setupLogin();
-
-    if (appState.token && appState.token !== 'null') {
-        console.log('Token encontrado. Carregando dados do usuário...');
-        loadUserData().then(() => {
-            // Após carregar dados do usuário, inicializar dashboard
-            initializeAfterLogin();
-        });
-    } else {
-        console.log('Nenhum token encontrado. Mostrando login.');
-        showLogin();
-    }
-
-    setupEventListeners();
-
-    // Configurar data inicial no filtro
-    const dateFilter = document.getElementById('appointmentDateFilter');
-    if (dateFilter) {
-        dateFilter.value = new Date().toISOString().split('T')[0];
-    }
-});
-
-// Função switchTab atualizada
+// ============================================
+// TROCA DE ABAS (TABS)
+// ============================================
 function switchTab(tabId) {
+    console.log(`Mudando para tab: ${tabId}`);
+
     // Remover classe active de todas as tabs
     document.querySelectorAll('.tab-btn').forEach(tab => {
         tab.classList.remove('active');
@@ -144,8 +151,7 @@ function switchTab(tabId) {
     // Carregar dados específicos da tab
     switch(tabId) {
         case 'dashboard':
-            // CORREÇÃO: Removido loadDashboardData() duplicado
-            refreshData(); // Esta função já chama loadDashboardData()
+            // Dashboard já é atualizado automaticamente pelo home.js
             break;
         case 'appointments':
             loadAppointments();
@@ -159,10 +165,89 @@ function switchTab(tabId) {
         case 'company':
             loadCompanyInfoModule();
             break;
+        default:
+            console.log(`Tab desconhecida: ${tabId}`);
     }
 }
 
-// Exportar funções para o escopo global (para onclick no HTML)
+// ============================================
+// INICIALIZAÇÃO DA APLICAÇÃO
+// ============================================
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('Agendame - Aplicação inicializando...');
+
+    // Configurar sistema de login
+    setupLogin();
+
+    // Configurar data inicial no filtro de agendamentos
+    const dateFilter = document.getElementById('appointmentDateFilter');
+    if (dateFilter) {
+        const today = new Date().toISOString().split('T')[0];
+        dateFilter.value = today;
+    }
+
+    // Verificar se há sessão ativa
+    const token = localStorage.getItem('agendame_token');
+
+    if (token && token !== 'null') {
+
+        try {
+            // Carregar dados do usuário e sessão
+            await loadUserSession();
+
+            // Configurar event listeners
+            setupEventListeners();
+
+            // Inicializar sistema após login bem-sucedido
+            await initializeAfterLogin();
+
+        } catch (error) {
+            console.error('Erro ao carregar sessão:', error);
+            showAlert('Erro ao restaurar sessão. Faça login novamente.', 'error');
+            showLogin();
+        }
+
+    } else {
+        console.log('Nenhuma sessão encontrada. Exibindo tela de login.');
+        showLogin();
+        setupEventListeners();
+    }
+
+    console.log('Aplicação inicializada');
+});
+
+// ============================================
+// FUNÇÕES GLOBAIS (para outros módulos chamarem)
+// ============================================
+
+/**
+ * Função para recarregar dados (usada por outros módulos)
+ */
+export function refreshData() {
+    console.log('Recarregando todos os dados...');
+    showAlert('Atualizando dados...', 'info');
+
+    // Recarregar tudo
+    Promise.all([
+        loadServices(),
+        loadAppointments(),
+        loadClients()
+    ]).then(() => {
+        // Atualizar dashboard e contadores
+        refreshDashboard();
+        updateAllCounts();
+
+        showAlert('Dados atualizados com sucesso!', 'success');
+    }).catch(error => {
+        console.error('Erro ao recarregar dados:', error);
+        showAlert('Erro ao atualizar dados', 'error');
+    });
+}
+
+// ============================================
+// EXPORTAR FUNÇÕES PARA ESCOPO GLOBAL
+// (para uso em onclick no HTML)
+// ============================================
 window.switchTab = switchTab;
 window.openNewServiceModal = openNewServiceModal;
 window.saveNewService = saveNewService;
@@ -177,5 +262,4 @@ window.sendWhatsAppToClient = sendWhatsAppToClient;
 window.saveCompanyInfo = saveCompanyInfo;
 window.copyCompanyUrl = copyCompanyUrl;
 window.closeModal = closeModal;
-window.refreshData = refreshData;
-window.loadDashboardData = loadDashboardData;
+window.refreshData = refreshData; // Exportar refreshData

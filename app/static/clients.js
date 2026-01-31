@@ -20,6 +20,7 @@ export async function loadClients(isDashboard = false) {
 
             if (!isDashboard) {
                 clientsCount.textContent = clients.length;
+
                 renderClients(clients);
             }
         }
