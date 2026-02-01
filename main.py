@@ -123,7 +123,7 @@ class Server:
 
     # --------------------------------------------------
 
-    def run(self, host: str = '0.0.0.0', port: int = 10000) -> None:
+    def run(self, host: str = '0.0.0.0', port: int = 8000) -> None:
         uvicorn.run(
             'main:app',
             host=host,

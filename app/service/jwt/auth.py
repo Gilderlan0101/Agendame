@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+import bcrypt
+
 
 load_dotenv()
 
@@ -30,14 +32,46 @@ logger = logging.getLogger(__name__)
 
 
 def get_hashed_password(password: str) -> str:
-    """Retorna o hash da senha usando o contexto de criptografia configurado."""
-    return PASSWORD_CONTEXT.hash(password)
+    try:
+        # Truncar para 72 bytes antes de fazer hash
+        password_bytes = password.encode('utf-8')
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
 
+        # Usar bcrypt diretamente
+        hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+        return hashed.decode('utf-8')
+    except Exception as e:
+        raise Exception(f"Error hashing password: {str(e)}")
 
-def verify_password(password: str, hashed_pass: str) -> bool:
-    """Verifica se a senha em plain-text corresponde ao hash."""
-    return PASSWORD_CONTEXT.verify(password, hashed_pass)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verifica se a senha em plain-text corresponde ao hash.
+    Precisa aplicar o mesmo truncamento da função de hash.
+    """
+    try:
+        # Converter para bytes UTF-8
+        password_bytes = plain_password.encode('utf-8')
 
+        # APLICAR MESMO TRUNCAMENTO da função get_hashed_password
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
+
+        # Converter hash de volta para bytes se necessário
+        if isinstance(hashed_password, str):
+            hashed_bytes = hashed_password.encode('utf-8')
+        else:
+            hashed_bytes = hashed_password
+
+        # Verificar com bcrypt
+        return bcrypt.checkpw(password_bytes, hashed_bytes)
+
+    except Exception as e:
+        # Fallback para o passlib se bcrypt falhar
+        try:
+            return PASSWORD_CONTEXT.verify(plain_password, hashed_password)
+        except:
+            raise Exception(f"Error verifying password: {str(e)}")
 
 def create_access_token(
     subject: Union[str, Any],
