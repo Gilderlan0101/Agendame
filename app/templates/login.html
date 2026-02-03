@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendame - Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/login.css') }}">
+    <link rel="icon" href="{{ url_for('static', path='icon/agendame.jpeg') }}">
+</head>
+<body>
+    <!-- WhatsApp Support -->
+    <a href="https://wa.me/5573999320283?text=Olá! Preciso de ajuda com login no Agendame"
+       class="whatsapp-float" target="_blank">
+        <i class="fab fa-whatsapp"></i>
+        <div class="whatsapp-tooltip">Precisa de ajuda?</div>
+    </a>
+
+    <!-- Main Login Container -->
+    <div class="login-container">
+        <div class="login-left">
+            <div class="login-brand">
+                <div class="logo">
+                    <i class="fas fa-calendar-check"></i>
+                    <span class="logo-text">Agendame</span>
+                </div>
+                <h1>Bem-vindo de volta! 👋</h1>
+                <p class="subtitle">Gerencie seus agendamentos de forma simples e eficiente</p>
+            </div>
+
+            <div class="login-features">
+                <div class="feature">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h4>Agendamento 24/7</h4>
+                        <p>Seus clientes agendam a qualquer hora</p>
+                    </div>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h4>Controle Financeiro</h4>
+                        <p>Acompanhe seu faturamento em tempo real</p>
+                    </div>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">
+                        <i class="fas fa-comment-dots"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h4>WhatsApp Automático</h4>
+                        <p>Reduza faltas com lembretes automáticos</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="trial-notice">
+                <i class="fas fa-gem"></i>
+                <p><strong>Conta Trial?</strong> Use o mesmo e-mail e senha do cadastro</p>
+            </div>
+        </div>
+
+        <div class="login-right">
+            <div class="login-card">
+                <div class="login-header">
+                    <h2>Acesse sua conta</h2>
+                    <p>Entre com suas credenciais para continuar</p>
+                </div>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="email">
+                            <i class="fas fa-envelope"></i> E-mail
+                        </label>
+                        <input type="email" id="email" class="form-control"
+                               placeholder="seu@email.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">
+                            <i class="fas fa-lock"></i> Senha
+                        </label>
+                        <div class="password-input">
+                            <input type="password" id="password" class="form-control"
+                                   placeholder="Sua senha" required>
+                            <button type="button" class="toggle-password" onclick="togglePassword()">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-helper">
+                            <a href="#" class="forgot-password">Esqueceu a senha?</a>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="loginBtn">
+                        <i class="fas fa-sign-in-alt"></i> Entrar na Conta
+                    </button>
+
+                    <div class="login-divider">
+                        <span>ou</span>
+                    </div>
+
+                    <a href="{{ url_for('create_trial_account') }}" class="btn btn-secondary">
+                        <i class="fas fa-rocket"></i> Criar Conta Trial 7 Dias
+                    </a>
+
+                    <div class="login-footer">
+                        <p>Ao fazer login, você concorda com nossos
+                           <a href="#">Termos de Serviço</a> e
+                           <a href="#">Política de Privacidade</a>.</p>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Alert Messages -->
+            <div id="alertContainer"></div>
+
+            <!-- Loading Overlay -->
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="loading-content">
+                    <div class="spinner"></div>
+                    <p>Autenticando...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="{{ url_for('static', path='auth.js') }}"></script>
+    <script>
+        // Função para alternar visibilidade da senha
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.querySelector('.toggle-password i');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.className = 'fas fa-eye-slash';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.className = 'fas fa-eye';
+            }
+        }
+
+        // Preencher email de trial se veio do registro
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const trialEmail = urlParams.get('email');
+
+            if (trialEmail) {
+                document.getElementById('email').value = trialEmail;
+                showAlert('✨ Conta trial criada com sucesso! Faça login para acessar.', 'success');
+            }
+        });
+
+        // Função auxiliar para mostrar alertas
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = `
+                <div class="alert-content">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()">×</button>
+                </div>
+            `;
+
+            alertContainer.appendChild(alertDiv);
+
+            setTimeout(() => {
+                if (alertDiv.parentElement) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // Configurar evento de submit do formulário
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            // Validar campos
+            if (!email || !password) {
+                showAlert('⚠️ Preencha todos os campos', 'warning');
+                return;
+            }
+
+            // Mostrar loading
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loginBtn').disabled = true;
+
+            // Simular delay para demo (remover em produção)
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                document.getElementById('loginBtn').disabled = false;
+
+                showAlert('🔐 Redirecionando para o painel...', 'info');
+
+                // Redirecionar para dashboard (simulação)
+                setTimeout(() => {
+                    window.location.href = 'http://127.0.0.1:8000/agendame/dashboard';
+                }, 1000);
+
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

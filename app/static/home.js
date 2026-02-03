@@ -1,81 +1,38 @@
-// home.js - Módulo para estatísticas e dashboard
-import { appState } from './appState.js'
-import { loadAppointments } from './appointments.js'
+// home.js - Módulo para dashboard e estatísticas (versão atualizada)
 
-// ============================================
-// ELEMENTOS DO DOM PARA DASHBOARD
-// ============================================
+import { appState } from './appState.js';
+import { loadAppointments, updateNextAppointmentsList } from './appointments.js';
+import {
+    todayRevenue,
+    todayAppointmentsEl,
+    totalClients,
+    activeServices,
+    nextAppointmentsList,
+    allAppointmentsCount,
+    servicesCount,
+    clientsCount,
+    userName,
+    userGreeting,
+    userBusiness
+} from './domElements.js';
+import { setLoading, showAlert } from './utils.js';
 
-// Elementos de estatísticas (IDs existentes no seu HTML)
-let todayAppointmentsEl;
-let todayRevenueEl;
-let totalClientsEl;
-let activeServicesEl;
-let nextAppointmentsCountEl;
-let nextAppointmentsListEl;
-
-// Elementos de contagem
-let allAppointmentsCountEl;
-let servicesCountEl;
-let clientsCountEl;
-
-// Elementos de listas
-let allAppointmentsListEl;
-let servicesListEl;
-let clientsListEl;
-
-// Elemento de nome do usuário
-let userNameEl;
-
-// ============================================
-// INICIALIZAÇÃO DOS ELEMENTOS DOM
-// ============================================
+// ================================
+// ESTATÍSTICAS DO DASHBOARD
+// ================================
 
 /**
- * Inicializa os elementos DOM
- */
-function initDomElements() {
-    todayAppointmentsEl = document.getElementById('todayAppointments');
-    todayRevenueEl = document.getElementById('todayRevenue');
-    totalClientsEl = document.getElementById('totalClients');
-    activeServicesEl = document.getElementById('activeServices');
-    nextAppointmentsCountEl = document.getElementById('nextAppointmentsCount');
-    nextAppointmentsListEl = document.getElementById('nextAppointmentsList');
-
-    allAppointmentsCountEl = document.getElementById('allAppointmentsCount');
-    servicesCountEl = document.getElementById('servicesCount');
-    clientsCountEl = document.getElementById('clientsCount');
-
-    allAppointmentsListEl = document.getElementById('allAppointmentsList');
-    servicesListEl = document.getElementById('servicesList');
-    clientsListEl = document.getElementById('clientsList');
-
-    userNameEl = document.getElementById('userName');
-
-    console.log('Elementos DOM inicializados para dashboard');
-}
-
-// ============================================
-// FUNÇÕES DE ESTATÍSTICAS E DASHBOARD
-// ============================================
-
-export async function quantityAppointments(){
-    let total = await loadAppointments();
-    return total?.total || 0;
-}
-
-/**
- * Atualiza o contador de agendamentos de hoje no dashboard
+ * Atualiza o contador de agendamentos de hoje
  */
 export async function updateTodayAppointmentsCount() {
-    if (!todayAppointmentsEl) initDomElements();
+    if (!todayAppointmentsEl) return;
 
     try {
         const today = new Date().toISOString().split('T')[0];
         let count = 0;
 
-        if (appState.appointments && Array.isArray(appState.appointments)) {  // ALTERADO
-            const todayApps = appState.appointments.filter(appointment => {  // ALTERADO
+        if (appState.appointments && Array.isArray(appState.appointments)) {
+            const todayApps = appState.appointments.filter(appointment => {
                 const appDate = appointment.date || appointment.appointment_date;
                 const isToday = appDate === today;
                 const isValidStatus = appointment.status !== 'cancelled' &&
@@ -83,8 +40,6 @@ export async function updateTodayAppointmentsCount() {
                 return isToday && isValidStatus;
             });
             count = todayApps.length;
-        } else {
-            count = await quantityAppointments();
         }
 
         todayAppointmentsEl.textContent = count;
@@ -98,17 +53,17 @@ export async function updateTodayAppointmentsCount() {
 }
 
 /**
- * Atualiza a receita de hoje no dashboard
+ * Atualiza a receita de hoje
  */
 export function updateTodayRevenue() {
-    if (!todayRevenueEl) initDomElements();
+    if (!todayRevenue) return;
 
     try {
         const today = new Date().toISOString().split('T')[0];
         let totalRevenue = 0;
 
-        if (appState.appointments && Array.isArray(appState.appointments)) {  // ALTERADO
-            const todayRevenueApps = appState.appointments.filter(appointment => {  // ALTERADO
+        if (appState.appointments && Array.isArray(appState.appointments)) {
+            const todayRevenueApps = appState.appointments.filter(appointment => {
                 const appDate = appointment.date || appointment.appointment_date;
                 const isValidStatus = appointment.status === 'confirmed' ||
                                      appointment.status === 'completed';
@@ -124,125 +79,76 @@ export function updateTodayRevenue() {
         }
 
         const formattedRevenue = formatCurrency(totalRevenue);
-        todayRevenueEl.textContent = formattedRevenue;
+        todayRevenue.textContent = formattedRevenue;
 
         return totalRevenue;
 
     } catch (error) {
         console.error('Erro ao calcular receita de hoje:', error);
-        todayRevenueEl.textContent = 'R$ 0,00';
-        return 0;
-    }
-}
-
-// Carregar clientes
-export async function loadClients(isDashboard = false) {
-    try {
-        let quantity_clients = 0;
-        const response = await fetch('/clients', {
-            headers: {
-                'Authorization': `Bearer ${appState.token}`
-            }
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            const clients = data.clients || [];
-            quantity_clients = clients.length;
-
-            // ATUALIZA O APPSTATE COM OS CLIENTES
-            appState.clients = clients;
-
-            return quantity_clients;
-        }
-
-        return 0;
-
-    } catch (error) {
-        console.error('Erro ao carregar clientes:', error);
-        if (!isDashboard) {
-            showAlert('Erro ao carregar clientes', 'error');
-        }
+        todayRevenue.textContent = 'R$ 0,00';
         return 0;
     }
 }
 
 /**
- * Atualiza o contador de clientes no dashboard
+ * Atualiza o contador de clientes
  */
 export async function updateClientsCount() {
-    if (!totalClientsEl) initDomElements();
+    if (!totalClients) return;
 
     try {
-        let real_value_of_clients = await loadClients();
-
-        // Usa o valor mais atual
-        const clientCount = real_value_of_clients || appState.clients?.length || 0;
-        totalClientsEl.textContent = clientCount;
-
-        // Atualiza também no appState para consistência
-        appState.totalClients = clientCount;
-
+        const clientCount = appState.clients?.length || 0;
+        totalClients.textContent = clientCount;
         return clientCount;
 
     } catch (error) {
         console.error('Erro ao atualizar contador de clientes:', error);
-        totalClientsEl.textContent = '0';
+        totalClients.textContent = '0';
         return 0;
     }
 }
 
 /**
- * Atualiza o contador de serviços ativos no dashboard
+ * Atualiza o contador de serviços ativos
  */
 export function updateActiveServicesCount() {
-    if (!activeServicesEl) initDomElements();
+    if (!activeServices) return;
 
     try {
-        // Corrigido: usa appState direto
-        const activeServices = appState.services?.filter(s => s.is_active !== false).length || 0;
-        activeServicesEl.textContent = activeServices;
-
-        // Atualiza no appState
-        appState.activeServicesCount = activeServices;
-
-        return activeServices;
+        const activeServicesCount = appState.services?.filter(s => s.is_active !== false).length || 0;
+        activeServices.textContent = activeServicesCount;
+        return activeServicesCount;
 
     } catch (error) {
         console.error('Erro ao atualizar contador de serviços:', error);
-        activeServicesEl.textContent = '0';
+        activeServices.textContent = '0';
         return 0;
     }
 }
 
 /**
- * Atualiza contadores gerais da aplicação
+ * Atualiza todos os contadores
  */
 export function updateAllCounts() {
     try {
         console.log('Atualizando todos os contadores...');
 
-        if (!allAppointmentsCountEl || !servicesCountEl || !clientsCountEl) {
-            initDomElements();
-        }
-
         // Atualizar contador de agendamentos totais
-        if (allAppointmentsCountEl && appState.appointments) {  // ALTERADO
-            const totalAppointments = appState.appointments.length;  // ALTERADO
-            allAppointmentsCountEl.textContent = totalAppointments;
-            console.log(`Total agendamentos: ${totalAppointments}`);
+        if (allAppointmentsCount && appState.appointments) {
+            const totalAppointments = appState.appointments.length;
+            allAppointmentsCount.textContent = totalAppointments;
         }
 
         // Atualizar contador de serviços
-        if (servicesCountEl && appState.services) {  // ALTERADO
-            const totalServices = appState.services.length;  // ALTERADO
-            servicesCountEl.textContent = totalServices;
+        if (servicesCount && appState.services) {
+            const totalServices = appState.services.length;
+            servicesCount.textContent = totalServices;
         }
 
         // Atualizar contador de clientes
-        if (clientsCountEl && appState.clients) {  // ALTERADO
-            const totalClients = appState.clients.length;  // ALTERADO
-            clientsCountEl.textContent = totalClients;
+        if (clientsCount && appState.clients) {
+            const totalClients = appState.clients.length;
+            clientsCount.textContent = totalClients;
         }
 
         console.log('Contadores atualizados com sucesso');
@@ -252,13 +158,15 @@ export function updateAllCounts() {
     }
 }
 
+// ================================
+// PRÓXIMOS AGENDAMENTOS
+// ================================
+
 /**
- * Atualiza a lista de próximos agendamentos
+ * Atualiza a lista de próximos agendamentos no dashboard
  */
-export function updateNextAppointments() {
-    if (!nextAppointmentsListEl || !nextAppointmentsCountEl) {
-        initDomElements();
-    }
+export async function updateNextAppointments() {
+    if (!nextAppointmentsList) return;
 
     try {
         const today = new Date();
@@ -267,8 +175,8 @@ export function updateNextAppointments() {
 
         let upcomingApps = [];
 
-        if (appState.appointments && Array.isArray(appState.appointments)) {  // ALTERADO
-            upcomingApps = appState.appointments.filter(appointment => {  // ALTERADO
+        if (appState.appointments && Array.isArray(appState.appointments)) {
+            upcomingApps = appState.appointments.filter(appointment => {
                 const appDateStr = appointment.date || appointment.appointment_date;
                 if (!appDateStr) return false;
 
@@ -292,53 +200,42 @@ export function updateNextAppointments() {
             upcomingApps = upcomingApps.slice(0, 5);
         }
 
-        // Atualizar contador
-        nextAppointmentsCountEl.textContent = upcomingApps.length;
-
         // Renderizar lista
         if (upcomingApps.length === 0) {
-            nextAppointmentsListEl.innerHTML = `
-                <div style="padding: 40px 20px; text-align: center; color: #666;">
-                    <i class="fas fa-calendar-check" style="font-size: 48px; color: #ddd;"></i>
-                    <p style="margin-top: 15px;">Nenhum agendamento para os próximos 7 dias</p>
+            nextAppointmentsList.innerHTML = `
+                <div class="appointments-list-empty">
+                    <i class="fas fa-calendar-check"></i>
+                    <p>Nenhum agendamento para os próximos 7 dias</p>
                 </div>
             `;
             return;
         }
 
-        nextAppointmentsListEl.innerHTML = upcomingApps.map(appointment => {
+        nextAppointmentsList.innerHTML = upcomingApps.map(appointment => {
             const clientName = appointment.client?.name || appointment.client_name || 'Cliente não informado';
-            const clientPhone = appointment.client?.phone || appointment.client_phone || '';
             const serviceName = appointment.service?.name || appointment.service_name || 'Serviço não informado';
             const appDate = appointment.date || appointment.appointment_date;
             const appTime = appointment.time || appointment.appointment_time || '--:--';
-            const price = appointment.price || appointment.service?.price || 0;
             const status = appointment.status || 'scheduled';
 
             const formattedDate = formatDateDisplay(appDate);
-            const formattedPrice = formatCurrency(price);
             const statusClass = getStatusClass(status);
             const statusText = getStatusText(status);
 
             return `
-                <div class="client-item">
-                    <div class="client-name">${clientName}</div>
-                    <div class="client-phone">${clientPhone}</div>
-                    <div class="client-service">${serviceName}</div>
-                    <div class="client-date">${formattedDate} às ${appTime}</div>
-                    <div class="client-price">${formattedPrice}</div>
-                    <div class="client-status ${statusClass}">${statusText}</div>
-                    <div class="client-actions">
-                        <button class="action-btn action-whatsapp"
-                                onclick="sendWhatsAppReminder('${appointment.id}')"
-                                title="Enviar WhatsApp">
-                            <i class="fab fa-whatsapp"></i>
-                        </button>
-                        <button class="action-btn action-view"
-                                onclick="viewAppointmentDetails(${appointment.id})"
-                                title="Ver detalhes">
-                            <i class="fas fa-eye"></i>
-                        </button>
+                <div class="appointment-item upcoming-appointment" data-appointment-id="${appointment.id}">
+                    <div class="appointment-info">
+                        <div class="appointment-client">
+                            <strong>${clientName}</strong>
+                            <span class="appointment-service">${serviceName}</span>
+                        </div>
+                        <div class="appointment-datetime">
+                            <i class="far fa-calendar"></i>
+                            <span>${formattedDate} às ${appTime}</span>
+                        </div>
+                    </div>
+                    <div class="appointment-status ${statusClass}">
+                        ${statusText}
                     </div>
                 </div>
             `;
@@ -346,53 +243,66 @@ export function updateNextAppointments() {
 
     } catch (error) {
         console.error('Erro ao atualizar próximos agendamentos:', error);
-        nextAppointmentsListEl.innerHTML = `
-            <div style="padding: 40px 20px; text-align: center; color: #ef4444;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 48px;"></i>
-                <p style="margin-top: 15px;">Erro ao carregar agendamentos</p>
+        nextAppointmentsList.innerHTML = `
+            <div class="appointments-list-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Erro ao carregar agendamentos</p>
             </div>
         `;
     }
 }
 
+// ================================
+// INFORMAÇÕES DO USUÁRIO
+// ================================
+
 /**
  * Atualiza o nome do usuário no dashboard
  */
 export function updateUserName() {
-    if (!userNameEl) initDomElements();
+    if (!userName || !userGreeting || !userBusiness) return;
 
     try {
-        let business_name = localStorage.getItem('business_name');
+        const userData = appState.user || JSON.parse(localStorage.getItem('agendame_user') || '{}');
 
-        const userName = appState.user?.name ||  // ALTERADO
-                        appState.user?.username || business_name || "Agendame";
+        // Nome para saudação (primeiro nome)
+        const firstName = (userData.name || '').split(' ')[0] || 'Usuário';
+        if (userGreeting) {
+            userGreeting.textContent = firstName;
+        }
 
-        userNameEl.textContent = userName;
+        // Nome completo
+        if (userName) {
+            userName.textContent = userData.name || userData.email || 'Usuário';
+        }
 
-        // Atualizar também o avatar com as iniciais
-        const avatarEl = document.querySelector('.avatar');
-        if (avatarEl) {
-            const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
-            if (initials.length > 0) {
-                avatarEl.textContent = initials;
-                avatarEl.setAttribute('title', `Sair (${userName})`);
-            }
+        // Nome da empresa
+        if (userBusiness) {
+            userBusiness.textContent = userData.business_name || 'Agendame';
         }
 
     } catch (error) {
         console.error('Erro ao atualizar nome do usuário:', error);
-        userNameEl.textContent = 'Usuário';
+        if (userGreeting) userGreeting.textContent = 'Usuário';
+        if (userName) userName.textContent = 'Usuário';
+        if (userBusiness) userBusiness.textContent = 'Agendame';
     }
 }
+
+// ================================
+// DASHBOARD COMPLETO
+// ================================
 
 /**
  * Atualiza todo o dashboard de uma vez
  */
-export function refreshDashboard() {
-    console.log('Atualizando dashboard...');
+export async function refreshDashboard() {
+    console.log('🔄 Atualizando dashboard...');
+
+    setLoading(true);
 
     try {
-        // 1. Atualizar nome do usuário
+        // 1. Informações do usuário
         updateUserName();
 
         // 2. Estatísticas principais
@@ -405,238 +315,84 @@ export function refreshDashboard() {
         updateAllCounts();
 
         // 4. Próximos agendamentos
-        updateNextAppointments();
+        await updateNextAppointments();
 
-        console.log('Dashboard atualizado com sucesso');
-        return true;
+        // 5. Efeito visual de atualização
+        highlightUpdatedCards();
+
+        console.log('✅ Dashboard atualizado com sucesso');
 
     } catch (error) {
-        console.error('Erro ao atualizar dashboard:', error);
-        return false;
+        console.error('🚨 Erro ao atualizar dashboard:', error);
+        showAlert('Erro ao atualizar dashboard', 'error');
+    } finally {
+        setLoading(false);
     }
 }
 
 /**
- * Atualiza uma aba específica do dashboard
+ * Efeito visual para cards atualizados
  */
-export function updateTab(tabId) {
-    switch(tabId) {
-        case 'dashboardTab':
-            refreshDashboard();
-            break;
-        case 'appointmentsTab':
-            updateAppointmentsTab();
-            break;
-        case 'servicesTab':
-            updateServicesTab();
-            break;
-        case 'clientsTab':
-            updateClientsTab();
-            break;
-        case 'companyTab':
-            // A empresa é atualizada pelo company.js
-            break;
-    }
+function highlightUpdatedCards() {
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach(card => {
+        card.classList.add('updated');
+        setTimeout(() => {
+            card.classList.remove('updated');
+        }, 1000);
+    });
 }
 
 /**
- * Atualiza a aba de agendamentos
+ * Inicializa o dashboard
  */
-function updateAppointmentsTab() {
-    if (!allAppointmentsListEl || !allAppointmentsCountEl) {
-        initDomElements();
+export function initDashboard() {
+    console.log('🚀 Inicializando dashboard...');
+
+    // Verificar se está na aba dashboard
+    const dashboardTab = document.getElementById('dashboardTab');
+    if (!dashboardTab || !dashboardTab.classList.contains('active')) {
+        return;
     }
 
-    try {
-        const appointments = appState.appointments || [];  // ALTERADO
-        allAppointmentsCountEl.textContent = appointments.length;
+    // Configurar eventos
+    setupDashboardEvents();
 
-        if (appointments.length === 0) {
-            allAppointmentsListEl.innerHTML = `
-                <div style="padding: 40px 20px; text-align: center; color: #666;">
-                    <i class="fas fa-calendar-times" style="font-size: 48px; color: #ddd;"></i>
-                    <p style="margin-top: 15px;">Nenhum agendamento cadastrado</p>
-                </div>
-            `;
-            return;
-        }
+    // Carregar dados iniciais
+    refreshDashboard();
 
-        allAppointmentsListEl.innerHTML = appointments.map(appointment => {
-            const clientName = appointment.client?.name || appointment.client_name || 'Cliente não informado';
-            const clientPhone = appointment.client?.phone || appointment.client_phone || '';
-            const serviceName = appointment.service?.name || appointment.service_name || 'Serviço não informado';
-            const appDate = appointment.date || appointment.appointment_date;
-            const appTime = appointment.time || appointment.appointment_time || '--:--';
-            const price = appointment.price || appointment.service?.price || 0;
-            const status = appointment.status || 'scheduled';
-
-            const formattedDate = formatDateFull(appDate);
-            const formattedPrice = formatCurrency(price);
-            const statusClass = getStatusClass(status);
-            const statusText = getStatusText(status);
-
-            return `
-                <div class="client-item">
-                    <div class="client-name">${clientName}</div>
-                    <div class="client-phone">${clientPhone}</div>
-                    <div class="client-service">${serviceName}</div>
-                    <div class="client-date">${formattedDate} às ${appTime}</div>
-                    <div class="client-price">${formattedPrice}</div>
-                    <div class="client-status ${statusClass}">${statusText}</div>
-                    <div class="client-actions">
-                        <button class="action-btn action-whatsapp"
-                                onclick="sendWhatsAppReminder('${clientPhone}')"
-                                title="Enviar WhatsApp">
-                            <i class="fab fa-whatsapp"></i>
-                        </button>
-                        <button class="action-btn action-edit"
-                                onclick="editAppointment('${appointment.id}')"
-                                title="Editar">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-    } catch (error) {
-        console.error('Erro ao atualizar lista de agendamentos:', error);
-        allAppointmentsListEl.innerHTML = `
-            <div style="padding: 40px 20px; text-align: center; color: #ef4444;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 48px;"></i>
-                <p style="margin-top: 15px;">Erro ao carregar agendamentos</p>
-            </div>
-        `;
-    }
+    console.log('✅ Dashboard inicializado');
 }
 
 /**
- * Atualiza a aba de serviços
+ * Configura eventos do dashboard
  */
-function updateServicesTab() {
-    if (!servicesListEl || !servicesCountEl) {
-        initDomElements();
+function setupDashboardEvents() {
+    // Botão de atualizar no dashboard
+    const refreshBtn = document.querySelector('[onclick*="refreshData"]');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', refreshDashboard);
     }
 
-    try {
-        const services = appState.services || [];  // ALTERADO
-        servicesCountEl.textContent = services.length;
-
-        if (services.length === 0) {
-            servicesListEl.innerHTML = `
-                <div style="padding: 40px 20px; text-align: center; color: #666;">
-                    <i class="fas fa-cut" style="font-size: 48px; color: #ddd;"></i>
-                    <p style="margin-top: 15px;">Nenhum serviço cadastrado</p>
-                </div>
-            `;
-            return;
-        }
-
-        servicesListEl.innerHTML = services.map(service => {
-            const isActive = service.is_active !== false;
-            const duration = service.duration || 60;
-            const price = service.price || 0;
-
-            const formattedPrice = formatCurrency(price);
-            const statusClass = isActive ? 'status-active' : 'status-inactive';
-            const statusText = isActive ? 'Ativo' : 'Inativo';
-
-            return `
-                <div class="service-item">
-                    <div class="service-name">${service.name}</div>
-                    <div class="service-price">${formattedPrice}</div>
-                    <div class="service-duration">${duration} min</div>
-                    <div class="service-status ${statusClass}">${statusText}</div>
-                    <div class="client-actions">
-                        <button class="action-btn action-edit"
-                                onclick="editService('${service.id}')"
-                                title="Editar">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="action-btn ${isActive ? 'action-remove' : 'action-whatsapp'}"
-                                onclick="${isActive ? `deactivateService('${service.id}')` : `activateService('${service.id}')`}"
-                                title="${isActive ? 'Desativar' : 'Ativar'}">
-                            <i class="fas fa-${isActive ? 'ban' : 'check'}"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-    } catch (error) {
-        console.error('Erro ao atualizar lista de serviços:', error);
-        servicesListEl.innerHTML = `
-            <div style="padding: 40px 20px; text-align: center; color: #ef4444;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 48px;"></i>
-                <p style="margin-top: 15px;">Erro ao carregar serviços</p>
-            </div>
-        `;
-    }
+    // Cards clicáveis
+    document.querySelectorAll('.stat-card').forEach(card => {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', function() {
+            const title = this.querySelector('h3')?.textContent;
+            if (title?.includes('Agendamentos')) {
+                window.switchTab('appointments');
+            } else if (title?.includes('Clientes')) {
+                window.switchTab('clients');
+            } else if (title?.includes('Serviços')) {
+                window.switchTab('services');
+            }
+        });
+    });
 }
 
-/**
- * Atualiza a aba de clientes
- */
-function updateClientsTab() {
-    if (!clientsListEl || !clientsCountEl) {
-        initDomElements();
-    }
-
-    try {
-        const clients = appState.clients || [];  // ALTERADO
-        clientsCountEl.textContent = clients.length;
-
-        if (clients.length === 0) {
-            clientsListEl.innerHTML = `
-                <div style="padding: 40px 20px; text-align: center; color: #666;">
-                    <i class="fas fa-users" style="font-size: 48px; color: #ddd;"></i>
-                    <p style="margin-top: 15px;">Nenhum cliente cadastrado</p>
-                </div>
-            `;
-            return;
-        }
-
-        clientsListEl.innerHTML = clients.map(client => {
-            const phone = client.phone || '';
-            const email = client.email || '';
-            const totalAppointments = client.appointments_count || 0;
-
-            return `
-                <div class="client-item">
-                    <div class="client-name">${client.name || 'Não informado'}</div>
-                    <div class="client-phone">${phone}</div>
-                    <div class="client-service">${email}</div>
-                    <div class="client-date">${totalAppointments} agendamentos</div>
-                    <div class="client-actions">
-                        <button class="action-btn action-whatsapp"
-                                onclick="sendWhatsAppToClient('${phone}')"
-                                title="Enviar WhatsApp">
-                            <i class="fab fa-whatsapp"></i>
-                        </button>
-                        <button class="action-btn action-edit"
-                                onclick="editClient('${client.id}')"
-                                title="Editar">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-    } catch (error) {
-        console.error('Erro ao atualizar lista de clientes:', error);
-        clientsListEl.innerHTML = `
-            <div style="padding: 40px 20px; text-align: center; color: #ef4444;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 48px;"></i>
-                <p style="margin-top: 15px;">Erro ao carregar clientes</p>
-            </div>
-        `;
-    }
-}
-
-// ============================================
+// ================================
 // FUNÇÕES AUXILIARES
-// ============================================
+// ================================
 
 /**
  * Formata valor monetário
@@ -681,20 +437,6 @@ function formatDateDisplay(dateString) {
 }
 
 /**
- * Formata data completa
- */
-function formatDateFull(dateString) {
-    if (!dateString) return '--/--/----';
-
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('pt-BR');
-    } catch (error) {
-        return dateString;
-    }
-}
-
-/**
  * Retorna classe CSS para status
  */
 function getStatusClass(status) {
@@ -722,75 +464,170 @@ function getStatusText(status) {
     return statusTexts[status] || 'Agendado';
 }
 
-// ============================================
-// INICIALIZAÇÃO
-// ============================================
+// ================================
+// ESTILOS DINÂMICOS
+// ================================
 
 /**
- * Inicializa o dashboard
- */
-export function initDashboard() {
-    console.log('Inicializando dashboard...');
-
-    // Inicializar elementos DOM
-    initDomElements();
-
-    // Adicionar estilos dinâmicos
-    addDynamicStyles();
-
-    console.log('Dashboard inicializado');
-}
-
-/**
- * Adiciona estilos dinâmicos
+ * Adiciona estilos dinâmicos para o dashboard
  */
 function addDynamicStyles() {
+    if (document.getElementById('dashboard-styles')) return;
+
     const style = document.createElement('style');
+    style.id = 'dashboard-styles';
     style.textContent = `
         /* Animações para atualização */
         @keyframes highlight {
-            0% { background-color: rgba(138, 43, 226, 0.1); }
-            100% { background-color: transparent; }
+            0% {
+                transform: translateY(0);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            50% {
+                transform: translateY(-4px);
+                box-shadow: 0 6px 16px rgba(138, 43, 226, 0.2);
+            }
+            100% {
+                transform: translateY(0);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
         }
 
         .stat-card.updated {
-            animation: highlight 1s ease;
+            animation: highlight 0.6s ease;
         }
 
-        /* Status adicional */
+        /* Estilos para próximos agendamentos */
+        .appointment-item.upcoming-appointment {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-radius: 8px;
+            background: #fff;
+            margin-bottom: 8px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+        }
+
+        .appointment-item.upcoming-appointment:hover {
+            border-color: #8a2be2;
+            box-shadow: 0 2px 8px rgba(138, 43, 226, 0.1);
+        }
+
+        .appointment-info {
+            flex: 1;
+        }
+
+        .appointment-client {
+            margin-bottom: 4px;
+        }
+
+        .appointment-client strong {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .appointment-service {
+            font-size: 14px;
+            color: #6b7280;
+            margin-left: 8px;
+        }
+
+        .appointment-datetime {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: #4b5563;
+        }
+
+        .appointment-datetime i {
+            color: #8a2be2;
+        }
+
+        .appointment-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-scheduled {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+
+        .status-confirmed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-completed {
+            background: #f0f9ff;
+            color: #0369a1;
+        }
+
+        .status-cancelled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
         .status-no-show {
-            background-color: #fee2e2;
-            color: #dc2626;
+            background: #fef3c7;
+            color: #92400e;
         }
 
-        /* Estilo para ação de visualização */
-        .action-view {
-            background-color: var(--info-color);
+        /* Estados vazios/erro */
+        .appointments-list-empty,
+        .appointments-list-error {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
         }
 
-        .action-view:hover {
-            background-color: #2563eb;
+        .appointments-list-empty i,
+        .appointments-list-error i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .appointments-list-empty i {
+            color: #d1d5db;
+        }
+
+        .appointments-list-error i {
+            color: #ef4444;
+        }
+
+        /* Estatísticas interativas */
+        .stat-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
         }
     `;
     document.head.appendChild(style);
 }
 
-// ============================================
-// FUNÇÕES AUXILIARES GLOBAIS
-// ============================================
+// ================================
+// INICIALIZAÇÃO
+// ================================
 
-/**
- * Função para visualizar detalhes do agendamento
- */
-function viewAppointment(appointmentId) {
-    // Implementar a visualização de detalhes
-    alert(`Detalhes do agendamento: ${appointmentId}`);
-}
+// Adicionar estilos quando o módulo for carregado
+addDynamicStyles();
 
-// ============================================
+// ================================
 // EXPORTAÇÕES PARA ESCOPO GLOBAL
-// ============================================
+// ================================
 
-// Exportar funções para serem usadas em outros módulos
 window.refreshDashboard = refreshDashboard;
-window.updateTab = (tabId) => updateTab(tabId + 'Tab');
+window.initDashboard = initDashboard;
+window.updateTodayAppointmentsCount = updateTodayAppointmentsCount;
+window.updateAllCounts = updateAllCounts;

@@ -1,6 +1,21 @@
+// appointments.js - Gerenciamento de agendamentos (atualizado para novo HTML)
+
 import { appState } from './appState.js';
-import { allAppointmentsCount, allAppointmentsList } from './domElements.js';
-import { setLoading, showAlert, closeModal } from './utils.js'; // IMPORTAR closeModal DO utils.js
+import {
+    allAppointmentsCount,
+    allAppointmentsList,
+    appointmentClientName,
+    appointmentClientPhone,
+    appointmentDate,
+    appointmentDateFilter,
+    appointmentNotes,
+    appointmentService,
+    appointmentTime,
+    newAppointmentModal,
+    nextAppointmentsList,
+    todayAppointmentsEl
+} from './domElements.js';
+import { closeModal, setLoading, showAlert } from './utils.js';
 
 // Funções auxiliares
 function formatDate(dateString) {
@@ -103,6 +118,19 @@ export async function loadAppointments(filters = {}) {
                 renderAppointments(appState.appointments, allAppointmentsList);
             }
 
+            // Atualizar contador de agendamentos de hoje no dashboard
+            if (todayAppointmentsEl && filters.date) {
+                const today = new Date().toISOString().split('T')[0];
+                const filterDate = filters.date || today;
+                const todayApps = appState.appointments.filter(app => {
+                    const appDate = app.date || app.appointment_date;
+                    if (!appDate) return false;
+                    const formattedAppDate = new Date(appDate).toISOString().split('T')[0];
+                    return formattedAppDate === filterDate;
+                });
+                todayAppointmentsEl.textContent = todayApps.length;
+            }
+
             return data;
 
         } else {
@@ -194,20 +222,20 @@ export function renderAppointments(appointments, container, isCompact = false) {
         if (isCompact) {
             // Layout compacto (para dashboards)
             return `
-                <div class="client-item" data-appointment-id="${appId}">
-                    <div class="client-info">
-                        <div class="client-name">${clientName}</div>
-                        <div class="client-service">${serviceName}</div>
-                        <div class="client-details">
-                            <span class="client-date"><i class="far fa-calendar"></i> ${formattedDate}</span>
-                            <span class="client-time"><i class="far fa-clock"></i> ${formattedTime}</span>
-                            <span class="client-price"><i class="fas fa-money-bill-wave"></i> R$ ${formattedPrice}</span>
+                <div class="appointment-item" data-appointment-id="${appId}">
+                    <div class="appointment-info">
+                        <div class="appointment-client">${clientName}</div>
+                        <div class="appointment-service">${serviceName}</div>
+                        <div class="appointment-details">
+                            <span class="appointment-date"><i class="far fa-calendar"></i> ${formattedDate}</span>
+                            <span class="appointment-time"><i class="far fa-clock"></i> ${formattedTime}</span>
+                            <span class="appointment-price"><i class="fas fa-money-bill-wave"></i> R$ ${formattedPrice}</span>
                         </div>
                     </div>
-                    <div class="client-actions">
-                        <span class="client-status ${statusInfo.class}">${statusInfo.text}</span>
+                    <div class="appointment-actions">
+                        <span class="appointment-status ${statusInfo.class}">${statusInfo.text}</span>
                         ${clientPhone ? `
-                        <button class="action-btn action-whatsapp"
+                        <button class="btn btn-sm btn-whatsapp"
                                 onclick="sendWhatsAppReminder(${appId}, '${safeClientPhone}', '${safeClientName}', '${formattedDate}', '${formattedTime}', '${safeServiceName}', ${servicePrice})"
                                 title="Enviar lembrete por WhatsApp">
                             <i class="fab fa-whatsapp"></i>
@@ -219,58 +247,40 @@ export function renderAppointments(appointments, container, isCompact = false) {
         } else {
             // Layout completo (para lista de agendamentos)
             return `
-                <div class="client-item" data-appointment-id="${appId}">
-                    <div class="client-info">
-                        <div class="client-header">
-                            <div class="client-name">${clientName}</div>
-                            <div class="client-service">${serviceName}</div>
-                        </div>
-                        <div class="client-details">
-                            <div class="detail-group">
-                                <span class="detail-label"><i class="fas fa-phone"></i> Telefone:</span>
-                                <span class="detail-value">${formattedPhone}</span>
-                            </div>
-                            <div class="detail-group">
-                                <span class="detail-label"><i class="far fa-calendar"></i> Data:</span>
-                                <span class="detail-value">${formattedDate} às ${formattedTime}</span>
-                            </div>
-                            <div class="detail-group">
-                                <span class="detail-label"><i class="fas fa-money-bill-wave"></i> Valor:</span>
-                                <span class="detail-value">R$ ${formattedPrice}</span>
-                            </div>
-                            ${notes ? `
-                            <div class="detail-group">
-                                <span class="detail-label"><i class="fas fa-sticky-note"></i> Observações:</span>
-                                <span class="detail-value">${notes}</span>
-                            </div>
-                            ` : ''}
-                            <div class="detail-group">
-                                <span class="detail-label"><i class="far fa-clock"></i> Criado em:</span>
-                                <span class="detail-value">${formattedCreatedAt}</span>
-                            </div>
-                        </div>
+                <div class="appointment-row" data-appointment-id="${appId}">
+                    <div class="appointment-column">
+                        <div class="appointment-client-name">${clientName}</div>
+                        <div class="appointment-client-phone">${formattedPhone}</div>
                     </div>
-                    <div class="client-actions">
-                        <span class="client-status ${statusInfo.class}">${statusInfo.text}</span>
-                        <div class="action-buttons">
-                            ${clientPhone ? `
-                            <button class="action-btn action-whatsapp"
-                                    onclick="sendWhatsAppReminder(${appId}, '${safeClientPhone}', '${safeClientName}', '${formattedDate}', '${formattedTime}', '${safeServiceName}', ${servicePrice})"
-                                    title="Enviar lembrete por WhatsApp">
-                                <i class="fab fa-whatsapp"></i>
-                            </button>
-                            ` : ''}
-                            <button class="action-btn action-view"
-                                    onclick="viewAppointmentDetails(${appId})"
-                                    title="Ver detalhes">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button class="action-btn action-edit"
-                                    onclick="editAppointment(${appId})"
-                                    title="Editar agendamento">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                        </div>
+                    <div class="appointment-column">
+                        <div class="appointment-service-name">${serviceName}</div>
+                        <div class="appointment-service-price">R$ ${formattedPrice}</div>
+                    </div>
+                    <div class="appointment-column">
+                        <div class="appointment-date-time">${formattedDate} às ${formattedTime}</div>
+                        ${notes ? `<div class="appointment-notes">${notes}</div>` : ''}
+                    </div>
+                    <div class="appointment-column">
+                        <span class="appointment-status-badge ${statusInfo.class}">${statusInfo.text}</span>
+                    </div>
+                    <div class="appointment-column appointment-actions-column">
+                        ${clientPhone ? `
+                        <button class="btn-icon btn-whatsapp"
+                                onclick="sendWhatsAppReminder(${appId}, '${safeClientPhone}', '${safeClientName}', '${formattedDate}', '${formattedTime}', '${safeServiceName}', ${servicePrice})"
+                                title="Enviar lembrete">
+                            <i class="fab fa-whatsapp"></i>
+                        </button>
+                        ` : ''}
+                        <button class="btn-icon btn-view"
+                                onclick="viewAppointmentDetails(${appId})"
+                                title="Ver detalhes">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn-icon btn-edit"
+                                onclick="editAppointment(${appId})"
+                                title="Editar agendamento">
+                            <i class="fas fa-edit"></i>
+                        </button>
                     </div>
                 </div>
             `;
@@ -393,8 +403,7 @@ export function viewAppointmentDetails(appointmentId) {
 
     // Criar HTML dos detalhes
     const detailsHTML = `
-        <div class="appointment-details">
-            <h3><i class="fas fa-calendar-check"></i> Detalhes do Agendamento</h3>
+        <div class="appointment-details-modal">
             <div class="detail-section">
                 <h4><i class="fas fa-user"></i> Informações do Cliente</h4>
                 <div class="detail-grid">
@@ -471,12 +480,6 @@ export async function editAppointment(appointmentId) {
         return;
     }
 
-    // Se o status não for 'scheduled', não permitir edição
-    // if (appointment.status !== 'scheduled' || appointment.status !== 'confirmed') {
-    //     showAlert('Apenas agendamentos com status "Agendado" podem ser editados', 'warning');
-    //     return;
-    // }
-
     // Carregar serviços disponíveis para o modal
     let availableServices = [];
     try {
@@ -498,25 +501,25 @@ export async function editAppointment(appointmentId) {
 
     // Criar conteúdo do modal
     const modalContent = `
-        <div class="edit-appointment-modal">
-            <form id="editAppointmentForm" class="appointment-form">
+        <div class="edit-appointment-form">
+            <form id="editAppointmentForm" class="modal-form">
                 <div class="form-group">
-                    <label for="clientName">Nome do Cliente *</label>
-                    <input type="text" id="clientName" name="client_name"
+                    <label for="editClientName">Nome do Cliente *</label>
+                    <input type="text" id="editClientName"
                            value="${appointment.client?.name || appointment.client_name || ''}"
                            required>
                 </div>
 
                 <div class="form-group">
-                    <label for="clientPhone">Telefone *</label>
-                    <input type="tel" id="clientPhone" name="client_phone"
+                    <label for="editClientPhone">Telefone *</label>
+                    <input type="tel" id="editClientPhone"
                            value="${appointment.client?.phone || appointment.client_phone || ''}"
                            required>
                 </div>
 
                 <div class="form-group">
-                    <label for="serviceId">Serviço</label>
-                    <select id="serviceId" name="service_id">
+                    <label for="editServiceId">Serviço</label>
+                    <select id="editServiceId">
                         <option value="">Selecione um serviço</option>
                         ${availableServices.map(service => `
                             <option value="${service.id}"
@@ -529,40 +532,42 @@ export async function editAppointment(appointmentId) {
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="appointmentDate">Data</label>
-                        <input type="date" id="appointmentDate" name="appointment_date"
+                        <label for="editAppointmentDate">Data</label>
+                        <input type="date" id="editAppointmentDate"
                                value="${appointment.date || appointment.appointment_date || ''}">
                     </div>
 
                     <div class="form-group">
-                        <label for="appointmentTime">Horário</label>
-                        <input type="time" id="appointmentTime" name="appointment_time"
+                        <label for="editAppointmentTime">Horário</label>
+                        <input type="time" id="editAppointmentTime"
                                value="${formatTime(appointment.time || appointment.appointment_time || '')}">
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="price">Valor</label>
-                    <input type="number" id="price" name="price" step="0.01" min="0"
+                    <label for="editPrice">Valor</label>
+                    <input type="number" id="editPrice" step="0.01" min="0"
                            value="${parseFloat(appointment.service?.price || appointment.price || 0).toFixed(2)}">
                 </div>
 
                 <div class="form-group">
-                    <label for="status">Status</label>
-                    <select id="status" name="status">
+                    <label for="editStatus">Status</label>
+                    <select id="editStatus">
                         <option value="scheduled" ${appointment.status === 'scheduled' ? 'selected' : ''}>Agendado</option>
                         <option value="confirmed" ${appointment.status === 'confirmed' ? 'selected' : ''}>Confirmado</option>
+                        <option value="completed" ${appointment.status === 'completed' ? 'selected' : ''}>Concluído</option>
                         <option value="cancelled" ${appointment.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
+                        <option value="no_show" ${appointment.status === 'no_show' ? 'selected' : ''}>Não Compareceu</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="notes">Observações</label>
-                    <textarea id="notes" name="notes" rows="3">${appointment.notes || ''}</textarea>
+                    <label for="editNotes">Observações</label>
+                    <textarea id="editNotes" rows="3">${appointment.notes || ''}</textarea>
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="button" class="btn btn-primary" onclick="saveAppointmentChanges(${appointmentId})">
                         <i class="fas fa-save"></i> Salvar Alterações
                     </button>
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">
@@ -575,98 +580,187 @@ export async function editAppointment(appointmentId) {
 
     // Mostrar modal
     showModal('Editar Agendamento', modalContent);
+}
 
-    // Adicionar evento de submit
-    const form = document.getElementById('editAppointmentForm');
-    if (form) {
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
+// Salvar alterações do agendamento
+export async function saveAppointmentChanges(appointmentId) {
+    try {
+        // Coletar dados do formulário
+        const updateData = {
+            client_name: document.getElementById('editClientName')?.value || '',
+            client_phone: document.getElementById('editClientPhone')?.value || '',
+            service_id: document.getElementById('editServiceId')?.value || null,
+            appointment_date: document.getElementById('editAppointmentDate')?.value || '',
+            appointment_time: document.getElementById('editAppointmentTime')?.value || '',
+            price: parseFloat(document.getElementById('editPrice')?.value || 0),
+            status: document.getElementById('editStatus')?.value || 'scheduled',
+            notes: document.getElementById('editNotes')?.value || ''
+        };
 
-            const formData = new FormData(form);
-            const updateData = {};
+        setLoading(true);
 
-            // Coletar dados do formulário
-            for (let [key, value] of formData.entries()) {
-                if (value !== '') {
-                    if (key === 'service_id' || key === 'price') {
-                        updateData[key] = value ? parseFloat(value) : null;
-                    } else if (key === 'client_name' || key === 'client_phone') {
-                        updateData[key] = value.trim();
-                    } else {
-                        updateData[key] = value;
-                    }
-                }
-            }
-
-            try {
-                setLoading(true);
-
-                const response = await fetch(`/agendame/appointments/${appointmentId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${appState.token}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(updateData)
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-
-                    showAlert(result.message || 'Agendamento atualizado com sucesso!', 'success');
-
-                    // Fechar modal usando a função do utils.js
-                    closeModal();
-
-                    // Recarregar agendamentos
-                    await loadAppointments();
-
-                } else {
-                    const errorData = await response.json();
-                    showAlert(errorData.detail || 'Erro ao atualizar agendamento', 'error');
-                }
-
-            } catch (error) {
-                console.error('Erro ao atualizar agendamento:', error);
-                showAlert('Erro ao atualizar agendamento. Tente novamente.', 'error');
-            } finally {
-                setLoading(false);
-            }
+        const response = await fetch(`/agendame/appointments/${appointmentId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${appState.token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(updateData)
         });
+
+        if (response.ok) {
+            const result = await response.json();
+
+            showAlert(result.message || 'Agendamento atualizado com sucesso!', 'success');
+
+            // Fechar modal usando a função do utils.js
+            closeModal();
+
+            // Recarregar agendamentos
+            await loadAppointments();
+
+        } else {
+            const errorData = await response.json();
+            showAlert(errorData.detail || 'Erro ao atualizar agendamento', 'error');
+        }
+
+    } catch (error) {
+        console.error('Erro ao atualizar agendamento:', error);
+        showAlert('Erro ao atualizar agendamento. Tente novamente.', 'error');
+    } finally {
+        setLoading(false);
     }
 }
 
-// Função para mostrar modal
-export function showModal(title, content) {
-    // Remover modal existente
-    const existingOverlay = document.querySelector('.modal-overlay');
-    if (existingOverlay) {
-        existingOverlay.remove();
+// Abrir modal de novo agendamento
+export function openNewAppointmentModal() {
+    if (newAppointmentModal) {
+        newAppointmentModal.classList.add('show');
+        // Preencher data atual como padrão
+        if (appointmentDate) {
+            const today = new Date().toISOString().split('T')[0];
+            appointmentDate.value = today;
+        }
+        // Limpar campos
+        if (appointmentClientName) appointmentClientName.value = '';
+        if (appointmentClientPhone) appointmentClientPhone.value = '';
+        if (appointmentNotes) appointmentNotes.value = '';
+        // Carregar serviços
+        loadServicesForAppointment();
     }
+}
 
-    // Criar overlay
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
+// Carregar serviços para o dropdown de agendamento
+async function loadServicesForAppointment() {
+    try {
+        const response = await fetch('/company/services', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${appState.token}`,
+                'Accept': 'application/json'
+            }
+        });
 
-    // Criar modal
-    const modal = document.createElement('div');
-    modal.className = 'modal-dynamic';
-    modal.innerHTML = `
-        <div class="modal-header">
-            <h3>${title}</h3>
-            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
-        </div>
-        <div class="modal-body">
-            ${content}
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Fechar</button>
-        </div>
-    `;
+        if (response.ok) {
+            const data = await response.json();
+            const services = data.services || [];
 
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
+            if (appointmentService) {
+                // Limpar opções existentes
+                appointmentService.innerHTML = '<option value="">Selecione um serviço...</option>';
+
+                // Adicionar opções
+                services.forEach(service => {
+                    const option = document.createElement('option');
+                    option.value = service.id;
+                    option.textContent = `${service.name} - R$ ${parseFloat(service.price || 0).toFixed(2)}`;
+                    appointmentService.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao carregar serviços:', error);
+    }
+}
+
+// Salvar novo agendamento
+export async function saveNewAppointment() {
+    try {
+        // Validar campos
+        if (!appointmentClientName?.value.trim()) {
+            showAlert('Nome do cliente é obrigatório', 'error');
+            return;
+        }
+
+        if (!appointmentClientPhone?.value.trim()) {
+            showAlert('Telefone do cliente é obrigatório', 'error');
+            return;
+        }
+
+        if (!appointmentService?.value) {
+            showAlert('Selecione um serviço', 'error');
+            return;
+        }
+
+        if (!appointmentDate?.value) {
+            showAlert('Data é obrigatória', 'error');
+            return;
+        }
+
+        if (!appointmentTime?.value) {
+            showAlert('Horário é obrigatório', 'error');
+            return;
+        }
+
+        setLoading(true);
+
+        const appointmentData = {
+            client_name: appointmentClientName.value.trim(),
+            client_phone: appointmentClientPhone.value.trim(),
+            service_id: parseInt(appointmentService.value),
+            appointment_date: appointmentDate.value,
+            appointment_time: appointmentTime.value,
+            notes: appointmentNotes?.value.trim() || ''
+        };
+
+        const response = await fetch('/agendame/appointments', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${appState.token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(appointmentData)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+
+            showAlert(result.message || 'Agendamento criado com sucesso!', 'success');
+
+            // Fechar modal
+            closeModal('newAppointmentModal');
+
+            // Recarregar agendamentos
+            await loadAppointments();
+
+            // Recarregar dashboard se estiver visível
+            if (window.refreshDashboard) {
+                window.refreshDashboard();
+            }
+
+        } else {
+            const errorData = await response.json();
+            showAlert(errorData.detail || 'Erro ao criar agendamento', 'error');
+        }
+
+    } catch (error) {
+        console.error('Erro ao criar agendamento:', error);
+        showAlert('Erro ao criar agendamento. Tente novamente.', 'error');
+    } finally {
+        setLoading(false);
+    }
 }
 
 // Filtrar agendamentos localmente
@@ -727,7 +821,7 @@ export async function loadTodayAppointments() {
     });
 }
 
-// Carregar próximos agendamentos (próximos 7 dias) - CORRIGIDO
+// Carregar próximos agendamentos (próximos 7 dias)
 export async function loadUpcomingAppointments() {
     const today = new Date();
     const nextWeek = new Date();
@@ -737,15 +831,92 @@ export async function loadUpcomingAppointments() {
     const endDate = nextWeek.toISOString().split('T')[0];
 
     return await loadAppointments({
-        start_date: startDate,  // CORRIGIDO: startDate em vez de start_date
-        end_date: endDate,      // CORRIGIDO: endDate em vez de end_date
-        status: 'scheduled' // Apenas agendados
+        start_date: startDate,
+        end_date: endDate,
+        status: 'scheduled'
     });
+}
+
+// Atualizar próximo agendamentos no dashboard
+export async function updateNextAppointmentsList() {
+    if (!nextAppointmentsList) return;
+
+    const today = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(today.getDate() + 7);
+
+    const startDate = today.toISOString().split('T')[0];
+    const endDate = nextWeek.toISOString().split('T')[0];
+
+    try {
+        const queryParams = new URLSearchParams({
+            start_date: startDate,
+            end_date: endDate,
+            status: 'scheduled',
+            limit: 5
+        });
+
+        const response = await fetch(`/company/appointments?${queryParams}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${appState.token}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const appointments = data.appointments || [];
+
+            if (appointments.length > 0) {
+                renderAppointments(appointments, nextAppointmentsList, true);
+            } else {
+                nextAppointmentsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-check"></i>
+                        <h3>Nenhum agendamento próximo</h3>
+                        <p>Você não tem agendamentos para os próximos 7 dias</p>
+                    </div>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao carregar próximos agendamentos:', error);
+    }
 }
 
 // Função para recarregar agendamentos
 export function reloadAppointments(filters = {}) {
     return loadAppointments(filters);
+}
+
+// Função para mostrar modal
+export function showModal(title, content) {
+    // Remover modal existente
+    const existingOverlay = document.querySelector('.modal-overlay');
+    if (existingOverlay) {
+        existingOverlay.remove();
+    }
+
+    // Criar overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+
+    // Criar modal
+    const modal = document.createElement('div');
+    modal.className = 'modal-dynamic';
+    modal.innerHTML = `
+        <div class="modal-header">
+            <h3>${title}</h3>
+            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+        </div>
+        <div class="modal-body">
+            ${content}
+        </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
 }
 
 // Exportar funções para o escopo global
@@ -758,6 +929,10 @@ window.searchAppointments = searchAppointments;
 window.sendWhatsAppReminder = sendWhatsAppReminder;
 window.viewAppointmentDetails = viewAppointmentDetails;
 window.editAppointment = editAppointment;
+window.saveAppointmentChanges = saveAppointmentChanges;
+window.openNewAppointmentModal = openNewAppointmentModal;
+window.saveNewAppointment = saveNewAppointment;
 window.reloadAppointments = reloadAppointments;
 window.filterLocalAppointments = filterLocalAppointments;
+window.updateNextAppointmentsList = updateNextAppointmentsList;
 window.showModal = showModal;

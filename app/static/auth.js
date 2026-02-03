@@ -1,339 +1,483 @@
-// app/auth.js
+// auth.js - Gerenciamento de autenticação
 
-import { appState } from './appState.js';
-import { userName, loginPage, dashboardPage, loginForm } from './domElements.js';
-import { showAlert, setLoading } from './utils.js';
+let currentUser = null;
+let authToken = null;
 
-// ================================
-// LOGIN
-// ================================
-export function setupLogin() {
-    if (!loginForm) return;
+/**
+ * Inicializa o sistema de autenticação
+ */
+export function initAuth() {
+    console.log('🔐 Inicializando sistema de autenticação...');
 
-    loginForm.addEventListener('submit', async function (e) {
-        e.preventDefault();
+    // Verificar se há token salvo
+    authToken = getCookie('access_token') || localStorage.getItem('agendame_token');
 
-        setLoading(true);
+    if (authToken) {
+        console.log('📝 Token encontrado, verificando validade...');
+        return validateTokenAndLoadUser();
+    }
 
-        try {
-            const formData = new URLSearchParams();
-            formData.append('username', document.getElementById('email').value);
-            formData.append('password', document.getElementById('password').value);
-
-            const response = await fetch('/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: formData
-            });
-
-            if (!response.ok) {
-                let errorMessage = 'Credenciais inválidas';
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.detail || errorMessage;
-                } catch (e) {}
-                throw new Error(errorMessage);
-            }
-
-            const loginData = await response.json();
-
-            // 1. TOKEN (do login response)
-            appState.token = loginData.access_token;
-            localStorage.setItem('agendame_token', loginData.access_token);
-
-            // 2. Dados básicos do login response
-            appState.user = {
-                id: loginData.user_id || loginData.id,
-                username: loginData.username,
-                email: loginData.email,
-                business_name: loginData.business_name,
-                token_type: loginData.token_type
-            };
-            localStorage.setItem('agendame_user', JSON.stringify(appState.user));
-
-            // 3. Company slug do login response
-            if (loginData.slog) {
-                appState.companySlug = loginData.slog;
-                localStorage.setItem('agendame_slug', loginData.slog);
-            }
-
-            // ================================
-            // AGORA BUSCAR DADOS COMPLETOS DO /auth/me
-            // ================================
-            await loadCompleteUserData();
-
-            // ⭐⭐ IMPORTANTE: SALVAR NOME DA EMPRESA AQUI ⭐⭐
-            // Depois de carregar dados completos, temos a company
-            if (appState.company && appState.company.name) {
-                localStorage.setItem('business_name', appState.company.name);
-                console.log('Nome da empresa salvo:', appState.company.name);
-            }
-
-            showAlert('Login realizado com sucesso!', 'success');
-            showDashboard();
-
-        } catch (error) {
-            showAlert(error.message || 'Erro ao fazer login', 'error');
-            console.error('Erro no login:', error);
-        } finally {
-            setLoading(false);
-        }
-    });
+    console.log('📭 Nenhum token encontrado, usuário não autenticado');
+    return Promise.resolve(false);
 }
 
-// ================================
-// CARREGAR DADOS COMPLETOS DO USUÁRIO (/auth/me)
-// ================================
-async function loadCompleteUserData() {
+/**
+ * Realiza login do usuário
+ */
+export async function loginUser(email, password) {
+    console.log('🔐 Tentando login para:', email);
+
     try {
-        const token = localStorage.getItem('agendame_token');
+        // Mostrar loading
+        showLoading(true);
 
-        if (!token) {
-            throw new Error('Token não encontrado');
-        }
+        // Preparar dados do formulário no formato OAuth2
+        const formData = new FormData();
+        formData.append('username', email);
+        formData.append('password', password);
 
-        const response = await fetch('/auth/me', {
+        // Fazer requisição de login
+        const response = await fetch('/auth/login', {
+            method: 'POST',
+            body: formData,
             headers: {
-                'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json'
             }
         });
 
         if (!response.ok) {
-            throw new Error('Falha ao carregar dados do usuário');
+            let errorMessage = 'Credenciais inválidas';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorMessage;
+            } catch (e) {
+                // Se não conseguir parsear JSON, usar status
+                if (response.status === 401) {
+                    errorMessage = 'E-mail ou senha incorretos';
+                } else if (response.status === 403) {
+                    errorMessage = 'Conta desativada ou sem acesso';
+                }
+            }
+            throw new Error(errorMessage);
         }
 
-        const userData = await response.json();
+        const data = await response.json();
 
-        // ================================
-        // ATUALIZAR USER STATE COM DADOS COMPLETOS
-        // ================================
-        appState.user = {
-            id: userData.id,
-            username: userData.username,
-            email: userData.email,
-            phone: userData.phone || null,
-            status: userData.status ?? true,
-            photo: userData.photo || null,
-            name: userData.name, // "Corte Supremo Barber & Spa"
-            business_name: userData.name, // mesmo que name
-            slug: userData.slug // "corte-supremo-barber-spa"
-        };
-        localStorage.setItem('agendame_user', JSON.stringify(appState.user));
-
-        // ================================
-        // COMPANY STATE
-        // ================================
-        appState.company = {
-            id: userData.id, // mesmo user_id
-            name: userData.name, // ⭐⭐ AQUI ESTÁ O NOME DA EMPRESA ⭐⭐
-            business_name: userData.name,
-            slug: userData.slug,
-            email: userData.email,
-            phone: userData.phone || null,
-            photo: userData.photo || null
-        };
-        localStorage.setItem('agendame_company', JSON.stringify(appState.company));
-
-        // ================================
-        // COMPANY SLUG
-        // ================================
-        appState.companySlug = userData.slug;
-        localStorage.setItem('agendame_slug', userData.slug);
-
-        // ================================
-        // COMPANY INFO
-        // ================================
-        appState.companyInfo = {
-            id: userData.id,
-            name: userData.name, // ⭐⭐ AQUI TAMBÉM ⭐⭐
-            business_name: userData.name,
-            slug: userData.slug,
-            email: userData.email,
-            phone: userData.phone || null,
-            photo: userData.photo || null
-        };
-        localStorage.setItem('agendame_company_info', JSON.stringify(appState.companyInfo));
-
-        // ================================
-        // ⭐⭐ SALVAR NOME DA EMPRESA SEPARADAMENTE ⭐⭐
-        // ================================
-        if (userData.name) {
-            localStorage.setItem('business_name', userData.name);
-            console.log('Nome da empresa configurado:', userData.name);
+        // Salvar token (se vier na resposta)
+        if (data.access_token) {
+            authToken = data.access_token;
+            saveToken(data.access_token);
         }
 
-        // ================================
-        // ATUALIZAR UI
-        // ================================
-        if (userName) {
-            userName.textContent = userData.username || userData.name || userData.email || 'Usuário';
-        }
+        // Carregar informações do usuário
+        await loadUserData();
 
-        return userData;
+        // Mostrar mensagem de sucesso
+        showMessage('Login realizado com sucesso!', 'success');
+
+        // Redirecionar para dashboard ou próxima URL
+        redirectAfterLogin();
+
+        return true;
 
     } catch (error) {
-        console.error('Erro ao carregar dados do usuário:', error);
-        throw error;
-    }
-}
+        console.error('🚨 Erro no login:', error);
+        showMessage(error.message || 'Erro ao realizar login', 'error');
+        return false;
 
-// ================================
-// LOAD SESSION (ao carregar a página)
-// ================================
-export async function loadUserSession() {
-    setLoading(true);
-
-    try {
-        const token = localStorage.getItem('agendame_token');
-
-        if (!token) {
-            throw new Error('Sem sessão ativa');
-        }
-
-        appState.token = token;
-
-        // Carregar dados completos do /auth/me
-        await loadCompleteUserData();
-
-        // ⭐⭐ Verificar se business_name está salvo
-        let businessName = localStorage.getItem('business_name');
-        if (!businessName && appState.company?.name) {
-            localStorage.setItem('business_name', appState.company.name);
-            console.log('Business name recuperado do appState:', appState.company.name);
-        }
-
-        showDashboard();
-        console.log('Sessão carregada com sucesso');
-
-    } catch (error) {
-        console.error('Erro ao carregar sessão:', error);
-        showAlert('Sessão expirada. Faça login novamente.', 'error');
-        clearSession();
-        showLogin();
     } finally {
-        setLoading(false);
+        showLoading(false);
     }
 }
 
-// ================================
-// LOGOUT
-// ================================
-export function handleLogout() {
-    if (confirm('Deseja sair da sua conta?')) {
-        clearSession();
-        showAlert('Logout realizado com sucesso!', 'success');
-        showLogin();
-        if (loginForm) loginForm.reset();
+/**
+ * Carrega dados do usuário atual
+ */
+async function loadUserData() {
+    try {
+        console.log('👤 Carregando dados do usuário...');
+
+        const response = await fetch('/auth/me', {
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            currentUser = await response.json();
+            console.log('✅ Dados do usuário carregados:', currentUser);
+
+            // Salvar no localStorage para persistência
+            localStorage.setItem('agendame_user', JSON.stringify(currentUser));
+            localStorage.setItem('agendame_token', authToken);
+
+            return currentUser;
+        } else {
+            console.warn('⚠️ Não foi possível carregar dados do usuário');
+            currentUser = {
+                email: 'usuario@exemplo.com',
+                name: 'Usuário'
+            };
+            return currentUser;
+        }
+
+    } catch (error) {
+        console.error('🚨 Erro ao carregar dados do usuário:', error);
+        // Criar usuário básico em caso de erro
+        currentUser = {
+            email: 'usuario@exemplo.com',
+            name: 'Usuário'
+        };
+        return currentUser;
     }
 }
 
-// ================================
-// LIMPAR SESSÃO
-// ================================
-function clearSession() {
+/**
+ * Valida o token e carrega usuário
+ */
+async function validateTokenAndLoadUser() {
+    try {
+        console.log('🔍 Validando token...');
+
+        const response = await fetch('/auth/me', {
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            currentUser = await response.json();
+            console.log('✅ Token válido, usuário:', currentUser.email);
+
+            // Atualizar localStorage
+            localStorage.setItem('agendame_user', JSON.stringify(currentUser));
+            localStorage.setItem('agendame_token', authToken);
+
+            return true;
+        } else {
+            console.warn('⚠️ Token inválido ou expirado');
+            clearAuth();
+            return false;
+        }
+
+    } catch (error) {
+        console.error('🚨 Erro ao validar token:', error);
+        clearAuth();
+        return false;
+    }
+}
+
+/**
+ * Realiza logout
+ */
+export function logoutUser() {
+    console.log('🚪 Realizando logout...');
+
+    // Chamar API de logout
+    fetch('/auth/logout', {
+        method: 'GET',
+        credentials: 'include'
+    }).catch(error => {
+        console.error('Erro ao chamar API de logout:', error);
+    });
+
+    // Limpar dados locais
+    clearAuth();
+
+    // Redirecionar para login
+    window.location.href = '/login';
+}
+
+/**
+ * Limpa todos os dados de autenticação
+ */
+function clearAuth() {
+    console.log('🧹 Limpando dados de autenticação...');
+
+    // Limpar cookies
+    document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
     // Limpar localStorage
     localStorage.removeItem('agendame_token');
     localStorage.removeItem('agendame_user');
     localStorage.removeItem('agendame_company');
     localStorage.removeItem('agendame_slug');
-    localStorage.removeItem('agendame_company_info');
-    localStorage.removeItem('business_name'); // ⭐⭐ LIMPAR TAMBÉM ⭐⭐
+    localStorage.removeItem('business_name');
 
-    // Limpar appState
-    appState.token = null;
-    appState.user = null;
-    appState.company = null;
-    appState.companySlug = null;
-    appState.companyInfo = null;
-    appState.services = [];
-    appState.clients = [];
-    appState.appointments = [];
-    appState.todayAppointments = [];
+    // Limpar variáveis
+    currentUser = null;
+    authToken = null;
 }
 
-// ================================
-// UI STATES
-// ================================
-export function showLogin() {
-    if (loginPage) loginPage.style.display = 'flex';
-    if (dashboardPage) dashboardPage.style.display = 'none';
-}
-
-export function showDashboard() {
-    if (loginPage) loginPage.style.display = 'none';
-    if (dashboardPage) dashboardPage.style.display = 'block';
-}
-
-// ================================
-// VERIFICAR AUTENTICAÇÃO
-// ================================
+/**
+ * Verifica se o usuário está autenticado
+ */
 export function isAuthenticated() {
-    return !!appState.token && !!appState.user;
+    return !!authToken && !!currentUser;
 }
 
-// ================================
-// GETTERS
-// ================================
-export function getToken() {
-    return appState.token;
-}
-
+/**
+ * Obtém o usuário atual
+ */
 export function getUser() {
-    return appState.user;
+    return currentUser;
 }
 
-export function getCompany() {
-    return appState.company;
+/**
+ * Obtém o token atual
+ */
+export function getToken() {
+    return authToken;
 }
 
-export function getCompanySlug() {
-    return appState.companySlug;
+/**
+ * Salva token no cookie e localStorage
+ */
+function saveToken(token) {
+    console.log('💾 Salvando token...');
+
+    // Salvar no cookie (para o middleware)
+    document.cookie = `access_token=${token}; path=/; max-age=3600; SameSite=Lax`;
+
+    // Salvar no localStorage (para o frontend)
+    localStorage.setItem('agendame_token', token);
+    authToken = token;
 }
 
-export function getCompanyName() {
-    // ⭐⭐ MÚLTIPLAS FORMAS DE PEGAR O NOME ⭐⭐
-    return appState.company?.name ||
-           appState.user?.name ||
-           appState.user?.business_name ||
-           localStorage.getItem('business_name') ||
-           '';
+/**
+ * Obtém cookie por nome
+ */
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
 }
 
-// ================================
-// FUNÇÃO ESPECÍFICA PARA PEGAR BUSINESS NAME
-// ================================
-export function getBusinessName() {
-    // 1. Tenta do localStorage primeiro
-    let businessName = localStorage.getItem('business_name');
+/**
+ * Redireciona após login bem-sucedido
+ */
+function redirectAfterLogin() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const nextUrl = urlParams.get('next') || '/agendame/dashboard';
 
-    // 2. Se não tiver, tenta do appState
-    if (!businessName) {
-        businessName = appState.company?.name ||
-                      appState.user?.name ||
-                      appState.user?.business_name ||
-                      'Minha Empresa';
+    console.log(`🔄 Redirecionando para: ${nextUrl}`);
 
-        // Salva no localStorage para uso futuro
-        if (businessName !== 'Minha Empresa') {
-            localStorage.setItem('business_name', businessName);
-        }
+    // Pequeno delay para mostrar mensagem de sucesso
+    setTimeout(() => {
+        window.location.href = nextUrl;
+    }, 1500);
+}
+
+/**
+ * Mostra mensagem na interface
+ */
+function showMessage(message, type = 'info') {
+    console.log(`📢 ${type}: ${message}`);
+
+    const alertContainer = document.getElementById('alertContainer');
+    if (!alertContainer) {
+        console.warn('Container de alertas não encontrado');
+        alert(message); // Fallback
+        return;
     }
 
-    return businessName;
+    // Remover alertas anteriores
+    const existingAlerts = alertContainer.querySelectorAll('.alert');
+    existingAlerts.forEach(alert => {
+        if (alert.parentElement === alertContainer) {
+            alert.remove();
+        }
+    });
+
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type}`;
+    alertDiv.innerHTML = `
+        <div class="alert-content">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+            <span>${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()">×</button>
+        </div>
+    `;
+
+    alertContainer.appendChild(alertDiv);
+
+    // Auto-remover após 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentElement === alertContainer) {
+            alertDiv.remove();
+        }
+    }, 5000);
 }
 
-// ================================
-// VALIDAR SESSÃO
-// ================================
-export function validateSession() {
-    if (!isAuthenticated()) {
-        showAlert('Sessão expirada. Faça login novamente.', 'error');
-        clearSession();
-        showLogin();
+/**
+ * Mostra/oculta loading
+ */
+function showLoading(show) {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loginBtn = document.getElementById('loginBtn');
+
+    if (loadingOverlay) {
+        loadingOverlay.style.display = show ? 'flex' : 'none';
+    }
+
+    if (loginBtn) {
+        loginBtn.disabled = show;
+        loginBtn.innerHTML = show
+            ? '<i class="fas fa-spinner fa-spin"></i> Autenticando...'
+            : '<i class="fas fa-sign-in-alt"></i> Entrar na Conta';
+    }
+}
+
+/**
+ * Protege rotas que requerem autenticação
+ */
+export function protectRoute() {
+    console.log('🛡️ Verificando proteção de rota...');
+
+    // Se não estiver autenticado e não estiver na página de login
+    if (!isAuthenticated() && !window.location.pathname.includes('/login')) {
+        console.log('🔒 Acesso negado, redirecionando para login...');
+
+        // Salvar a URL atual para redirecionar após login
+        const currentPath = window.location.pathname + window.location.search;
+        window.location.href = `/login?next=${encodeURIComponent(currentPath)}`;
         return false;
     }
+
+    // Se estiver na página de login mas já autenticado, redirecionar para dashboard
+    if (isAuthenticated() && window.location.pathname.includes('/login')) {
+        console.log('✅ Já autenticado, redirecionando para dashboard...');
+        window.location.href = '/agendame/dashboard';
+        return false;
+    }
+
     return true;
 }
+
+/**
+ * Inicializa formulário de login
+ */
+export function initLoginForm() {
+    console.log('📝 Inicializando formulário de login...');
+
+    const loginForm = document.getElementById('loginForm');
+    if (!loginForm) {
+        console.error('❌ Formulário de login não encontrado!');
+        return;
+    }
+
+    // Configurar submit do formulário
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+
+        if (!email || !password) {
+            showMessage('Por favor, preencha todos os campos', 'warning');
+            return;
+        }
+
+        // Validar formato de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showMessage('Por favor, insira um email válido', 'warning');
+            return;
+        }
+
+        // Tentar login
+        await loginUser(email, password);
+    });
+
+    // Preencher email de trial se veio do registro
+    const urlParams = new URLSearchParams(window.location.search);
+    const trialEmail = urlParams.get('email');
+    const error = urlParams.get('error');
+
+    if (trialEmail) {
+        document.getElementById('email').value = trialEmail;
+        showMessage('✨ Conta trial criada com sucesso! Faça login para acessar.', 'success');
+    }
+
+    if (error) {
+        showMessage(decodeURIComponent(error), 'error');
+    }
+
+    console.log('✅ Formulário de login inicializado');
+}
+
+/**
+ * Inicializa botão de logout
+ */
+export function initLogoutButton() {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            if (confirm('Tem certeza que deseja sair?')) {
+                logoutUser();
+            }
+        });
+    }
+}
+
+/**
+ * Função para alternar visibilidade da senha
+ */
+export function initPasswordToggle() {
+    const toggleBtn = document.querySelector('.toggle-password');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = this.querySelector('i');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.className = 'fas fa-eye-slash';
+            } else {
+                passwordInput.type = 'password';
+                icon.className = 'fas fa-eye';
+            }
+        });
+    }
+}
+
+// Inicializar quando o DOM carregar
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 DOM carregado, inicializando auth...');
+
+    // Inicializar funcionalidades do login
+    if (window.location.pathname.includes('/login')) {
+        initLoginForm();
+        initPasswordToggle();
+    }
+
+    // Inicializar botão de logout se existir
+    initLogoutButton();
+
+    // Verificar autenticação para páginas protegidas
+    if (window.location.pathname.includes('/agendame/')) {
+        initAuth().then(isValid => {
+            if (!isValid) {
+                console.log('❌ Autenticação falhou, redirecionando...');
+                protectRoute();
+            } else {
+                console.log('✅ Usuário autenticado, permitindo acesso');
+            }
+        });
+    }
+});
+
+// Exportar funções para uso global
+window.AgendameAuth = {
+    login: loginUser,
+    logout: logoutUser,
+    isAuthenticated,
+    getUser,
+    getToken,
+    protectRoute
+};

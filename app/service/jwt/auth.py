@@ -6,12 +6,11 @@ from datetime import datetime, timedelta
 from typing import Any, Optional, Union
 from zoneinfo import ZoneInfo
 
+import bcrypt
 from dotenv import load_dotenv
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-import bcrypt
-
 
 load_dotenv()
 
@@ -42,7 +41,8 @@ def get_hashed_password(password: str) -> str:
         hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
         return hashed.decode('utf-8')
     except Exception as e:
-        raise Exception(f"Error hashing password: {str(e)}")
+        raise Exception(f'Error hashing password: {str(e)}')
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
@@ -71,7 +71,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         try:
             return PASSWORD_CONTEXT.verify(plain_password, hashed_password)
         except:
-            raise Exception(f"Error verifying password: {str(e)}")
+            raise Exception(f'Error verifying password: {str(e)}')
+
 
 def create_access_token(
     subject: Union[str, Any],

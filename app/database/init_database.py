@@ -16,8 +16,8 @@ def normalize_database_url(url: str) -> str:
     Normaliza a URL do banco para compatibilidade com Tortoise ORM.
     Tortoise NÃO aceita 'postgresql://', apenas 'postgres://'
     """
-    if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgres://", 1)
+    if url.startswith('postgresql://'):
+        return url.replace('postgresql://', 'postgres://', 1)
     return url
 
 
@@ -38,13 +38,12 @@ def get_database_config() -> Dict[str, Any]:
         database_url = normalize_database_url(raw_database_url)
 
         return {
-            'connections': {
-                'default': database_url
-            },
+            'connections': {'default': database_url},
             'apps': {
                 'models': {
                     'models': [
                         'app.models.user',
+                        'app.models.trial',
                         # futuros:
                         # 'app.models.client',
                         # 'app.models.service',
@@ -65,13 +64,12 @@ def get_database_config() -> Dict[str, Any]:
     db_name = os.getenv('DB_NAME_DEV_LOCAL', DEFAULT_SQLITE_PATH)
 
     return {
-        'connections': {
-            'default': f'sqlite://{db_name}'
-        },
+        'connections': {'default': f'sqlite://{db_name}'},
         'apps': {
             'models': {
                 'models': [
                     'app.models.user',
+                    'app.models.trial',
                 ],
                 'default_connection': 'default',
             }
