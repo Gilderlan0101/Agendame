@@ -48,3 +48,7 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(
         agendame_chat_router, prefix='', tags=['agendame_chat']
     )  # Adicionado aqui
+
+    # Page trial
+    from app.routes.templates.register_trial import router as trial_router
+    app.include_router(trial_router)

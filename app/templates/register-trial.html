@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendame - Cadastro Trial Premium 7 Dias</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/register-trial.css') }}">
+    <link rel="icon" href="{{ url_for('static', path='icon/agendame.jpeg') }}">
+</head>
+<body>
+    <!-- WhatsApp Float Button -->
+    <a href="https://wa.me/5573999320283?text=Olá! Preciso de ajuda com o cadastro trial do Agendame" class="whatsapp-float" target="_blank">
+        <i class="fab fa-whatsapp"></i>
+        <div class="whatsapp-tooltip">Precisa de ajuda? Fale com nosso suporte!</div>
+    </a>
+
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <nav class="navbar">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="logo-text">Agendame</div>
+                </div>
+
+                <div class="nav-links">
+                    <a href="index.html">Página Inicial</a>
+                    <a href="index.html#features">Funcionalidades</a>
+                    <a href="index.html#pricing">Preços</a>
+                </div>
+
+                <a href="{{ url_for('login_page') }}" class="btn btn-secondary">Já tem conta? Login</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="register-container">
+        <div class="container">
+            <div class="register-wrapper">
+                <!-- Left Side - Form -->
+                <div class="register-form-section">
+                    <div class="form-header">
+                        <h1><i class="fas fa-crown"></i> Experimente 7 Dias Premium Grátis</h1>
+                        <p class="subtitle">Cadastre-se agora e tenha acesso completo a todas as funcionalidades por 7 dias. Sem compromisso, sem cartão de crédito.</p>
+
+                        <div class="trial-badge">
+                            <i class="fas fa-gem"></i>
+                            <span>Conta Premium Trial</span>
+                        </div>
+                    </div>
+
+                    <form id="trialForm">
+                        <div class="form-grid">
+                            <!-- Dados Pessoais -->
+                            <div class="form-group">
+                                <label for="username">
+                                    <i class="fas fa-user"></i> Nome de Usuário *
+                                </label>
+                                <input type="text" id="username" name="username" required
+                                       placeholder="Ex: salao_beleza_viva"
+                                       minlength="3"
+                                       maxlength="50">
+                                <small>Este será seu login no sistema</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="email">
+                                    <i class="fas fa-envelope"></i> E-mail *
+                                </label>
+                                <input type="email" id="email" name="email" required
+                                       placeholder="seu@email.com">
+                                <small>Enviaremos a confirmação para este e-mail</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="password">
+                                    <i class="fas fa-lock"></i> Senha *
+                                </label>
+                                <div class="password-input">
+                                    <input type="password" id="password" name="password" required
+                                           placeholder="Mínimo 8 caracteres"
+                                           minlength="8">
+                                    <button type="button" class="toggle-password" onclick="togglePassword('password')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <small class="password-strength">
+                                    <span id="strengthText">Força da senha: </span>
+                                    <span id="strengthMeter" class="strength-weak">Fraco</span>
+                                </small>
+                            </div>
+
+                            <!-- Dados do Negócio -->
+                            <div class="form-group full-width">
+                                <h3><i class="fas fa-store"></i> Dados do seu Negócio</h3>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="business_name">
+                                    <i class="fas fa-signature"></i> Nome do Estabelecimento *
+                                </label>
+                                <input type="text" id="business_name" name="business_name" required
+                                       placeholder="Ex: Salão Beleza Viva">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="business_type">
+                                    <i class="fas fa-tags"></i> Tipo de Negócio *
+                                </label>
+                                <select id="business_type" name="business_type" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="Barbearia">Barbearia</option>
+                                    <option value="Salão de Beleza">Salão de Beleza</option>
+                                    <option value="Estética">Estética</option>
+                                    <option value="Spa">Spa</option>
+                                    <option value="Manicure/Pedicure">Manicure/Pedicure</option>
+                                    <option value="Tatuagem">Estúdio de Tatuagem</option>
+                                    <option value="Massagem">Clínica de Massagem</option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="phone">
+                                    <i class="fas fa-phone"></i> Telefone *
+                                </label>
+                                <input type="tel" id="phone" name="phone" required
+                                       placeholder="(11) 99999-9999"
+                                       pattern="\([0-9]{2}\) [0-9]{5}-[0-9]{4}">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="whatsapp">
+                                    <i class="fab fa-whatsapp"></i> WhatsApp *
+                                </label>
+                                <input type="tel" id="whatsapp" name="whatsapp" required
+                                       placeholder="(11) 99999-9999"
+                                       pattern="\([0-9]{2}\) [0-9]{5}-[0-9]{4}">
+                                <small>Usaremos para enviar lembretes aos clientes</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="business_slug">
+                                    <i class="fas fa-link"></i> Link Personalizado *
+                                </label>
+                                <div class="slug-input">
+                                    <span class="slug-prefix">agendame.com/</span>
+                                    <input type="text" id="business_slug" name="business_slug" required
+                                           placeholder="Ex: salao-beleza-viva"
+                                           pattern="[a-z0-9-]+"
+                                           title="Use apenas letras minúsculas, números e hífens">
+                                </div>
+                                <small>Seus clientes usarão este link para agendar</small>
+                            </div>
+                        </div>
+
+                        <!-- Termos e Condições -->
+                        <div class="terms-section">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="terms" required>
+                                <span class="checkmark"></span>
+                                <span>Eu concordo com os <a href="#" class="terms-link">Termos de Uso</a> e <a href="#" class="terms-link">Política de Privacidade</a>.</span>
+                            </label>
+
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="marketing" checked>
+                                <span class="checkmark"></span>
+                                <span>Desejo receber dicas e novidades sobre o Agendame por e-mail.</span>
+                            </label>
+                        </div>
+
+                        <!-- Botão de Submit -->
+                        <button type="submit" class="btn btn-primary btn-submit" id="submitBtn">
+                            <i class="fas fa-rocket"></i> Criar Minha Conta Trial Premium
+                        </button>
+
+                        <div class="login-link">
+                            Já tem uma conta? <a href="{{ url_for('login_page') }}">Faça login aqui</a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Right Side - Benefits -->
+                <div class="benefits-section">
+                    <div class="benefits-card">
+                        <div class="premium-header">
+                            <i class="fas fa-crown"></i>
+                            <h2>O que você ganha com o Trial Premium</h2>
+                        </div>
+
+                        <div class="benefits-list">
+                            <div class="benefit-item">
+                                <div class="benefit-icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="benefit-content">
+                                    <h4>Acesso Total às Funcionalidades</h4>
+                                    <p>Todas as ferramentas premium liberadas por 7 dias</p>
+                                </div>
+                            </div>
+
+                            <div class="benefit-item">
+                                <div class="benefit-icon">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
+                                <div class="benefit-content">
+                                    <h4>Agendamentos Ilimitados</h4>
+                                    <p>Gerencie quantos clientes quiser durante o período</p>
+                                </div>
+                            </div>
+
+                            <div class="benefit-item">
+                                <div class="benefit-icon">
+                                    <i class="fas fa-comment-dots"></i>
+                                </div>
+                                <div class="benefit-content">
+                                    <h4>WhatsApp Automático</h4>
+                                    <p>Lembretes e confirmações automáticas para seus clientes</p>
+                                </div>
+                            </div>
+
+                            <div class="benefit-item">
+                                <div class="benefit-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div class="benefit-content">
+                                    <h4>Relatórios Completos</h4>
+                                    <p>Acompanhe seu faturamento e desempenho em tempo real</p>
+                                </div>
+                            </div>
+
+                            <div class="benefit-item">
+                                <div class="benefit-icon">
+                                    <i class="fas fa-link"></i>
+                                </div>
+                                <div class="benefit-content">
+                                    <h4>Link Personalizado</h4>
+                                    <p>Seu próprio link de agendamento para divulgar</p>
+                                </div>
+                            </div>
+
+                            <div class="benefit-item">
+                                <div class="benefit-icon">
+                                    <i class="fas fa-headset"></i>
+                                </div>
+                                <div class="benefit-content">
+                                    <h4>Suporte Prioritário</h4>
+                                    <p>Ajuda rápida da nossa equipe durante o trial</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="trial-countdown">
+                            <div class="countdown-header">
+                                <i class="fas fa-clock"></i>
+                                <h4>Seu Trial Premium Expira em:</h4>
+                            </div>
+                            <div class="countdown-timer">
+                                <div class="time-unit">
+                                    <span class="number">7</span>
+                                    <span class="label">Dias</span>
+                                </div>
+                                <div class="time-separator">:</div>
+                                <div class="time-unit">
+                                    <span class="number">23</span>
+                                    <span class="label">Horas</span>
+                                </div>
+                                <div class="time-separator">:</div>
+                                <div class="time-unit">
+                                    <span class="number">59</span>
+                                    <span class="label">Min</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="success-stories">
+                            <h4><i class="fas fa-star"></i> Histórias de Sucesso</h4>
+                            <div class="testimonial">
+                                <p>"O trial me mostrou como aumentar meus agendamentos em 40%. Hoje sou assinante oficial!"</p>
+                                <div class="author">
+                                    <strong>Mariana Silva</strong>
+                                    <span>Salão Bella Hair</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-check-circle"></i>
+                <h2>Conta Criada com Sucesso! 🎉</h2>
+            </div>
+
+            <div class="modal-body">
+                <div class="success-message">
+                    <p><strong>Parabéns! Sua conta Premium Trial foi ativada.</strong></p>
+                    <p>Você tem acesso completo a todas as funcionalidades por <strong>7 dias grátis</strong>.</p>
+
+                    <div class="account-details">
+                        <h4><i class="fas fa-user-circle"></i> Dados da sua conta:</h4>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="label">Usuário:</span>
+                                <span class="value" id="modalUsername">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">E-mail:</span>
+                                <span class="value" id="modalEmail">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Salão:</span>
+                                <span class="value" id="modalBusiness">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Link de Agendamento:</span>
+                                <span class="value" id="modalLink">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Dias Restantes:</span>
+                                <span class="value premium-badge">7 Dias Premium</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="next-steps">
+                        <h4><i class="fas fa-road"></i> Próximos Passos:</h4>
+                        <ol>
+                            <li><strong>Acesse seu painel</strong> e configure seus serviços</li>
+                            <li><strong>Compartilhe seu link</strong> com seus clientes</li>
+                            <li><strong>Teste todas as funcionalidades</strong> durante 7 dias</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="goToDashboard" class="btn btn-primary">
+                    <i class="fas fa-tachometer-alt"></i> Ir para o Painel
+                </button>
+                <button id="copyLink" class="btn btn-secondary">
+                    <i class="fas fa-copy"></i> Copiar Link
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Criando sua conta Premium...</p>
+            <p class="loading-sub">Aguarde alguns segundos</p>
+        </div>
+    </div>
+
+     <script  src="{{url_for('static', path='register-trial.js')}}"></script>
+</body>
+</html>
