@@ -64,6 +64,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
             '/auth/agendame/trial',  # Página de trial
             '/404',  # Página 404
             '/health',
+            '/ping',
+            '/keepalive',
             '/docs',
             '/redoc',
             '/openapi.json',
@@ -87,8 +89,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             '/redoc/',
             '/openapi',
             '/favicon',
-            '/health',
-            '/_health',  # Para monitoramento
+            '/health',  # Para monitoramento
         ]
 
         # Hosts/domínios permitidos (para produção)
@@ -218,14 +219,48 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         try:
             from app.service.jwt.jwt_decode_token import DecodeToken
+            from app.models.trial import TrialAccount
+            from app.models.user import User
 
             # Tenta decodificar o token
             decoded_data = DecodeToken(access_token)
 
-            if decoded_data:
-                return {'authenticated': True, 'user': decoded_data}
-            else:
+            if not decoded_data:
                 return {'authenticated': False, 'error': 'Token inválido.'}
+
+            # OBTÉM O USUÁRIO REAL DO BANCO DE DADOS
+            user_id = decoded_data.user_id
+
+            # Busca primeiro na tabela de usuários normais
+            user = await User.get_or_none(id=user_id)
+            is_trial = False
+
+            # Se não encontrou, busca na tabela trial
+            if not user:
+                user = await TrialAccount.get_or_none(id=user_id)
+                is_trial = True
+
+            if not user:
+                return {'authenticated': False, 'error': 'Usuário não encontrado.'}
+
+            # Adiciona informações adicionais ao usuário
+            user_data = {
+                'id': user.id,
+                'email': user.email,
+                'username': user.username,
+                'business_name': getattr(user, 'business_name', None),
+                'business_slug': getattr(user, 'business_slug', None),
+                'phone': getattr(user, 'phone', ''),
+                'is_trial': is_trial,
+                # Adiciona o objeto original para referência
+                '_user_obj': user
+            }
+
+            return {
+                'authenticated': True,
+                'user': user_data,  # Agora com dados reais do usuário
+                'decoded_token': decoded_data
+            }
 
         except Exception as e:
             if not self.is_production:

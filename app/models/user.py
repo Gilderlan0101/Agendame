@@ -44,12 +44,38 @@ class User(models.Model):
     def __str__(self):
         return f'User: {self.business_name} ({self.email})'
 
-
+# models.py - Atualize a classe Client
 class Client(models.Model):
     """Modelo para clientes dos salões"""
 
     id = fields.IntField(pk=True)
-    user = fields.ForeignKeyField('models.User', related_name='clients')
+
+    # Agora temos DUAS relações possíveis
+    user = fields.ForeignKeyField(
+        'models.User',
+        related_name='clients',
+        null=True  # Permite null para trial
+    )
+
+    # Nova relação para trial
+    trial_account = fields.ForeignKeyField(
+        'models.TrialAccount',
+        related_name='clients',
+        null=True  # Permite null para usuário regular
+    )
+
+    # Campo para saber qual tipo de proprietário
+    @property
+    def owner(self):
+        """Retorna o proprietário (user ou trial)"""
+        return self.user or self.trial_account
+
+    @property
+    def owner_id(self):
+        """Retorna o ID do proprietário"""
+        if self.user:
+            return self.user_id
+        return self.trial_account_id
 
     full_name = fields.CharField(max_length=200)
     phone = fields.CharField(max_length=20)
@@ -65,7 +91,7 @@ class Client(models.Model):
 
     class Meta:
         table = 'clients'
-        indexes = [('user_id', 'phone')]
+        indexes = [('user_id', 'phone'), ('trial_account_id', 'phone')]
 
     def __str__(self):
         return f'Client: {self.full_name} ({self.phone})'
