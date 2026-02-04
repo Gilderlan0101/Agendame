@@ -12,28 +12,31 @@ class TemplatesConfig:
 
     def __init__(self):
         # BASE_DIR é o diretório do projeto (Agendame/)
-        self.BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.BASE_DIR = os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__))
+        )
         print(f'BASE_DIR: {self.BASE_DIR}')
         # Diretório de templates (dentro de app/)
-        self.template_dir = f"{self.BASE_DIR}/templates"
+        self.template_dir = f'{self.BASE_DIR}/templates'
         self.templates = Jinja2Templates(directory=str(self.template_dir))
         # Diretório de arquivos estáticos (dentro de app/)
-        self.static_dir = f"{self.BASE_DIR}/static"
+        self.static_dir = f'{self.BASE_DIR}/static'
         # Verificar se o diretório static existe
         if not os.path.exists(self.static_dir):
             print(f'Aviso: Diretório static não encontrado: {self.static_dir}')
             # Criar o diretório se não existir
             os.mkdir(path=self.static_dir)
             print(f'Diretório static criado: {self.static_dir}')
+
+
 ########################################################################
 templates_config = TemplatesConfig()
 templates = templates_config.templates
 
 
-
 import os
-from urllib.parse import quote
 from typing import List
+from urllib.parse import quote
 
 from fastapi import Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,7 +55,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
 
         # Verifica se está em produção
-        self.is_production = os.getenv('ENVIRONMENT', 'development') == 'production'
+        self.is_production = (
+            os.getenv('ENVIRONMENT', 'development') == 'production'
+        )
 
         # Domínio para cookies (em produção)
         self.cookie_domain = os.getenv('COOKIE_DOMAIN', None)
@@ -120,26 +125,26 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if self.is_production and request.headers.get('host'):
             host = request.headers.get('host').split(':')[0]
             if host not in self.allowed_hosts:
-                print(f"✗ Host não permitido: {host}")
+                print(f'✗ Host não permitido: {host}')
                 return JSONResponse(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    content={'detail': 'Host não permitido'}
+                    content={'detail': 'Host não permitido'},
                 )
 
         # Log simplificado em produção
         if self.is_production:
-            print(f"{method} {path}")
+            print(f'{method} {path}')
         else:
-            print(f"\n=== MIDDLEWARE: {method} {path} ===")
+            print(f'\n=== MIDDLEWARE: {method} {path} ===')
 
         # Verifica se é uma rota pública
         if self._is_public_route(path, method):
             if not self.is_production:
-                print(f"✓ Rota pública: {path}")
+                print(f'✓ Rota pública: {path}')
             return await call_next(request)
 
         if not self.is_production:
-            print(f"✗ Rota protegida: {path}")
+            print(f'✗ Rota protegida: {path}')
 
         # Verifica autenticação
         auth_result = await self._check_authentication(request)
@@ -147,17 +152,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if auth_result.get('authenticated'):
             # Usuário autenticado
             if not self.is_production:
-                print(f"✓ Usuário autenticado: {auth_result.get('user')}")
+                print('✓ Usuário autenticado: [200]')
             request.state.user = auth_result.get('user')
             return await call_next(request)
         else:
             # Usuário não autenticado
             error_msg = auth_result.get('error')
             if not self.is_production:
-                print(f"✗ Não autenticado: {error_msg}")
+                print(f'✗ Não autenticado: {error_msg}')
             return await self._handle_unauthenticated(request, error_msg)
 
-    def _is_public_route(self, path: str, method: str = "GET") -> bool:
+    def _is_public_route(self, path: str, method: str = 'GET') -> bool:
         """Verifica se a rota é pública"""
 
         # 1. Verifica match exato em rotas públicas
@@ -181,13 +186,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 return True
 
         # 4. Páginas de agendamento público
-        if path.startswith('/agendame/') and not path.startswith('/agendame/dashboard'):
+        if path.startswith('/agendame/') and not path.startswith(
+            '/agendame/dashboard'
+        ):
             # Verifica se é uma página de empresa ou agendamento público
             parts = path.split('/')
             if len(parts) >= 3:
                 # Exemplos públicos: /agendame/nome-empresa
                 # Exemplos privados: /agendame/dashboard, /agendame/services
-                private_sections = ['dashboard', 'services', 'appointments', 'clients', 'company', 'settings', 'profile']
+                private_sections = [
+                    'dashboard',
+                    'services',
+                    'appointments',
+                    'clients',
+                    'company',
+                    'settings',
+                    'profile',
+                ]
                 if parts[2] not in private_sections:
                     return True
 
@@ -215,12 +230,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return {'authenticated': False, 'error': 'Acesso negado.'}
 
         if not self.is_production:
-            print(f"Token encontrado: {access_token[:20]}...")
+            print(f'Token encontrado: {access_token[:20]}...')
 
         try:
-            from app.service.jwt.jwt_decode_token import DecodeToken
             from app.models.trial import TrialAccount
             from app.models.user import User
+            from app.service.jwt.jwt_decode_token import DecodeToken
 
             # Tenta decodificar o token
             decoded_data = DecodeToken(access_token)
@@ -241,7 +256,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 is_trial = True
 
             if not user:
-                return {'authenticated': False, 'error': 'Usuário não encontrado.'}
+                return {
+                    'authenticated': False,
+                    'error': 'Usuário não encontrado.',
+                }
 
             # Adiciona informações adicionais ao usuário
             user_data = {
@@ -253,55 +271,73 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 'phone': getattr(user, 'phone', ''),
                 'is_trial': is_trial,
                 # Adiciona o objeto original para referência
-                '_user_obj': user
+                '_user_obj': user,
             }
 
             return {
                 'authenticated': True,
                 'user': user_data,  # Agora com dados reais do usuário
-                'decoded_token': decoded_data
+                'decoded_token': decoded_data,
             }
 
         except Exception as e:
             if not self.is_production:
-                print(f"Erro ao verificar token: {e}")
+                print(f'Erro ao verificar token: {e}')
             return {'authenticated': False, 'error': 'Erro de autenticação'}
 
-    async def _handle_unauthenticated(self, request: Request, error: str = None):
+    async def _handle_unauthenticated(
+        self, request: Request, error: str = None
+    ):
         """Lida com requisições não autenticadas"""
 
         path = request.url.path
 
         if not self.is_production:
-            print(f"Tratando requisição não autenticada para: {path}")
+            print(f'Tratando requisição não autenticada para: {path}')
 
         # Se for uma API (começa com /api/ ou /auth/ e NÃO é login), retorna JSON
-        if (path.startswith('/api/') or
-            (path.startswith('/auth/') and path != '/auth/login') or
-            path.startswith('/agendame/api/')):
+        if (
+            path.startswith('/api/')
+            or (path.startswith('/auth/') and path != '/auth/login')
+            or path.startswith('/agendame/api/')
+        ):
 
             if not self.is_production:
-                print("Retornando erro JSON para API")
+                print('Retornando erro JSON para API')
 
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={
-                    'detail': 'Não autenticado',
-                    'error': error or 'Acesso negado.',
-                },
+            # return JSONResponse(
+            #     status_code=status.HTTP_401_UNAUTHORIZED,
+            #     content={
+            #         'detail': 'Não autenticado',
+            #         'error': error or 'Acesso negado.',
+            #     },
+            #     headers={
+            #         'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            #         'Pragma': 'no-cache'
+            #     } if self.is_production else {}
+            # )
+
+            return templates.TemplateResponse(
+                '404.html',
+                {'request': request},
+                status_code=status.HTTP_404_NOT_FOUND,
                 headers={
                     'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-                    'Pragma': 'no-cache'
-                } if self.is_production else {}
+                    'Pragma': 'no-cache',
+                }
+                if self.is_production
+                else {},
             )
 
         # Se já estiver na página de login, mostra a página
         if path == '/login' or path.startswith('/agendame/trial'):
             if not self.is_production:
-                print("Já está em rota pública de login/trial")
+                print('Já está em rota pública de login/trial')
 
             # Chama o próximo handler (que renderizará a página)
-            return await self.app(request.scope, request.receive, request._send)
+            return await self.app(
+                request.scope, request.receive, request._send
+            )
 
         # Para rotas web, redireciona para login
         next_url = quote(path, safe='')
@@ -311,21 +347,22 @@ class AuthMiddleware(BaseHTTPMiddleware):
             redirect_url += f'&error={quote(error)}'
 
         if not self.is_production:
-            print(f"Redirecionando para: {redirect_url}")
+            print(f'Redirecionando para: {redirect_url}')
 
         response = RedirectResponse(
-            url=redirect_url,
-            status_code=status.HTTP_303_SEE_OTHER
+            url=redirect_url, status_code=status.HTTP_303_SEE_OTHER
         )
 
         # Headers de segurança em produção
         if self.is_production:
-            response.headers.update({
-                'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-                'Pragma': 'no-cache',
-                'X-Frame-Options': 'DENY',
-                'X-Content-Type-Options': 'nosniff',
-                'Referrer-Policy': 'strict-origin-when-cross-origin'
-            })
+            response.headers.update(
+                {
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+                    'Pragma': 'no-cache',
+                    'X-Frame-Options': 'DENY',
+                    'X-Content-Type-Options': 'nosniff',
+                    'Referrer-Policy': 'strict-origin-when-cross-origin',
+                }
+            )
 
         return response
