@@ -434,7 +434,7 @@ goToDashboardBtn.addEventListener('click', function() {
 
     // For now, we'll simulate a redirect after 2 seconds
     setTimeout(() => {
-        window.location.href = 'index.html?email=' + encodeURIComponent(document.getElementById('email').value);
+        window.location.href = 'http://127.0.0.1:8000/login';
     }, 2000);
 });
 

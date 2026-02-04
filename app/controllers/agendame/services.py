@@ -9,8 +9,13 @@ from fastapi import HTTPException, status
 
 from app.controllers import company
 from app.controllers.company.company_data import MyCompany
-from app.models.user import (Appointment, BusinessSettings, Client, Service,
-                             User)
+from app.models.user import (
+    Appointment,
+    BusinessSettings,
+    Client,
+    Service,
+    User,
+)
 from app.schemas.agendame.upgrade_service import UpdateServices
 
 

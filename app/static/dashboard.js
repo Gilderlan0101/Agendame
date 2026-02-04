@@ -1,13 +1,16 @@
-import { appState } from './appState.js';
-import {
-    todayRevenue, todayAppointmentsEl, totalClients, activeServices,
-    nextAppointmentsCount, nextAppointmentsList
-} from './domElements.js';
-import { setLoading, showAlert, formatDate } from './utils.js';
-import { getCompanySlug } from './company.js';
 import { loadAppointments } from './appointments.js';
-import { loadServices } from './services.js';
+import { appState } from './appState.js';
 import { loadClients } from './clients.js';
+import { getCompanySlug } from './company.js';
+import {
+    activeServices,
+    nextAppointmentsCount, nextAppointmentsList,
+    todayAppointmentsEl,
+    todayRevenue,
+    totalClients
+} from './domElements.js';
+import { loadServices } from './services.js';
+import { formatDate, setLoading, showAlert } from './utils.js';
 
 // Carregar dados do dashboard
 export async function loadDashboardData() {
@@ -317,6 +320,8 @@ export function stopDashboardAutoRefresh() {
 export function renderDashboardAppointments(appointments, container) {
     renderUpcomingAppointments(appointments);
 }
+
+
 
 // Exportar funções para escopo global
 window.refreshData = refreshData;

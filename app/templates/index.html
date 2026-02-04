@@ -5,192 +5,317 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agendame - Painel</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{url_for('static', path='styles.css')}}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/home.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/clients.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/appointments.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/services.css') }}">
+
+
+
     <link rel="icon" href="{{ url_for('static', path='icon/agendame.jpeg') }}">
 </head>
 <body>
-    <!-- Login Page -->
-    <div class="login-container" id="loginPage">
-        <div class="login-box">
-            <div class="logo">
-                <div class="logo-icon">
-                    <i class="fas fa-calendar-check"></i>
+    <!-- Trial Banner (apenas para contas trial) -->
+    <div class="trial-banner" id="trialBanner" style="display: none;">
+        <div class="container">
+            <div class="trial-content">
+                <i class="fas fa-gem"></i>
+                <div class="trial-text">
+                    <strong>CONTA TRIAL PREMIUM</strong>
+                    <span id="trialDays">7 dias restantes</span>
                 </div>
-                <h1>Agendame</h1>
-                <span>Painel de administração</span>
-            </div>
-
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" class="form-control" placeholder="seu@email.com" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Senha</label>
-                    <input type="password" id="password" class="form-control" placeholder="Sua senha" required>
-                </div>
-
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-sign-in-alt"></i> Entrar
+                <button class="btn btn-sm btn-upgrade" onclick="showTrialUpgradeModal()">
+                    <i class="fas fa-bolt"></i> Fazer Upgrade
                 </button>
-            </form>
+            </div>
         </div>
     </div>
 
-    <!-- Dashboard -->
-    <div class="dashboard-container" id="dashboardPage">
-        <header class="header">
-            <div class="container header-content">
-                <div class="header-logo">
+    <!-- Header -->
+    <header class="header">
+        <div class="container header-content">
+            <div class="header-left">
+                <div class="logo">
                     <i class="fas fa-calendar-check"></i>
-                    <h2>Agendame</h2>
+                    <span class="logo-text">Agendame</span>
                 </div>
 
-                <div class="user-info">
-                    <span id="userName">Carregando...</span>
-                    <div class="avatar" id="logoutBtn" title="Sair">
-                        <i class="fas fa-user"></i>
+                <nav class="tabs">
+                    <button class="tab-btn active" data-tab="dashboard">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </button>
+                    <button class="tab-btn" data-tab="appointments">
+                        <i class="fas fa-calendar-alt"></i> Agendamentos
+                    </button>
+                    <button class="tab-btn" data-tab="services">
+                        <i class="fas fa-cut"></i> Serviços
+                    </button>
+                    <button class="tab-btn" data-tab="clients">
+                        <i class="fas fa-users"></i> Clientes
+                    </button>
+                    <button class="tab-btn" data-tab="company">
+                        <i class="fas fa-building"></i> Empresa
+                    </button>
+                </nav>
+            </div>
+
+            <div class="header-right">
+                <div class="user-menu">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="user-details">
+                            <span class="user-name" id="userName">Carregando...</span>
+                            <span class="user-business" id="userBusiness">Agendame</span>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="dropdown-toggle">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a href="#" class="dropdown-item">
+                                <i class="fas fa-user"></i> Meu Perfil
+                            </a>
+                            <a href="#" class="dropdown-item">
+                                <i class="fas fa-cog"></i> Configurações
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item" onclick="handleLogout()">
+                                <i class="fas fa-sign-out-alt"></i> Sair
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </header>
-
-        <!-- Tabs Navigation -->
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="dashboard">
-                <i class="fas fa-tachometer-alt"></i> Dashboard
-            </button>
-            <button class="tab-btn" data-tab="appointments">
-                <i class="fas fa-calendar-alt"></i> Agendamentos
-            </button>
-            <button class="tab-btn" data-tab="services">
-                <i class="fas fa-cut"></i> Serviços
-            </button>
-            <button class="tab-btn" data-tab="clients">
-                <i class="fas fa-users"></i> Clientes
-            </button>
-            <button class="tab-btn" data-tab="company">
-                <i class="fas fa-building"></i> Empresa
-            </button>
         </div>
+    </header>
 
-        <!-- Dashboard Content -->
-        <main class="dashboard-content">
-            <div class="container">
-                <!-- Alert Messages -->
-                <div class="alert" id="alertMessage"></div>
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Alert Messages -->
+            <div id="alertContainer"></div>
 
-                <!-- Loading Spinner -->
-                <div class="loading-spinner" id="loadingSpinner">
+            <!-- Loading Overlay -->
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="loading-content">
                     <div class="spinner"></div>
+                    <p>Carregando...</p>
                 </div>
+            </div>
 
-                <!-- Dashboard Tab -->
-                <div class="tab-content active" id="dashboardTab">
+            <!-- Dashboard Tab -->
+            <div class="tab-content active" id="dashboardTab">
+                <div class="dashboard-header">
                     <div class="dashboard-title">
-                        <h1><i class="fas fa-tachometer-alt"></i> Painel de Controle</h1>
-                        <p>Bem-vindo ao seu painel de agendamentos</p>
+                        <h1>Olá, <span id="userGreeting">Usuário</span>! 👋</h1>
+                        <p>Veja como está seu negócio hoje</p>
                     </div>
 
                     <div class="quick-actions">
-                        <button class="btn btn-primary" onclick="openNewServiceModal()">
+                        <button class="btn btn-primary" onclick="saveCompanyInfo()">
                             <i class="fas fa-plus"></i> Novo Serviço
                         </button>
                         <button class="btn btn-success" onclick="openNewAppointmentModal()">
                             <i class="fas fa-calendar-plus"></i> Novo Agendamento
                         </button>
-                        <button class="btn btn-info" onclick="refreshData()">
-                            <i class="fas fa-sync-alt"></i> Atualizar Dados
+                        <button class="btn btn-outline" onclick="refreshData()">
+                            <i class="fas fa-sync-alt"></i> Atualizar
                         </button>
                     </div>
+                </div>
 
-                    <div class="stats-container">
-                        <div class="stat-card">
-                            <div class="stat-icon revenue-icon">
-                                <i class="fas fa-dollar-sign"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>GANHO HOJE</h3>
-                                <div class="stat-value" id="todayRevenue">R$ 0,00</div>
-                            </div>
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-primary">
+                            <i class="fas fa-dollar-sign"></i>
                         </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon appointments-icon">
-                                <i class="fas fa-calendar-check"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>AGENDAMENTOS HOJE</h3>
-                                <div class="stat-value" id="todayAppointments">0</div>
-                            </div>
-                        </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon clients-icon">
-                                <i class="fas fa-users"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>CLIENTES CADASTRADOS</h3>
-                                <div class="stat-value" id="totalClients">0</div>
-                            </div>
-                        </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon services-icon">
-                                <i class="fas fa-cut"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>SERVIÇOS ATIVOS</h3>
-                                <div class="stat-value" id="activeServices">0</div>
+                        <div class="stat-content">
+                            <h3>Faturamento Hoje</h3>
+                            <div class="stat-value" id="todayRevenue">R$ 0,00</div>
+                            <div class="stat-trend positive">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Próximos Agendamentos -->
-                    <div class="cards-container">
-                        <div class="cards-header">
-                            <h2><i class="fas fa-clock"></i> Próximos Agendamentos</h2>
-                            <div class="cards-count" id="nextAppointmentsCount">0</div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-success">
+                            <i class="fas fa-calendar-check"></i>
                         </div>
-                        <div class="clients-list" id="nextAppointmentsList">
-                            <!-- Agendamentos serão carregados aqui -->
+                        <div class="stat-content">
+                            <h3>Agendamentos Hoje</h3>
+                            <div class="stat-value" id="todayAppointments">0</div>
+                            <div class="stat-trend positive">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon bg-warning">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Clientes</h3>
+                            <div class="stat-value" id="totalClients">0</div>
+                            <div class="stat-trend positive">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon bg-info">
+                            <i class="fas fa-cut"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Serviços Ativos</h3>
+                            <div class="stat-value" id="activeServices">0</div>
+                            <div class="stat-trend neutral">
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Agendamentos Tab -->
-                <div class="tab-content" id="appointmentsTab">
+                <!-- Charts & Lists -->
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-clock"></i> Próximos Agendamentos</h3>
+                            <a href="#" onclick="switchTab('appointments')" class="card-link">
+                                Ver todos <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            <div class="appointments-list" id="nextAppointmentsList">
+                                <!-- Agendamentos carregados via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-line"></i> Desempenho Semanal</h3>
+                            <select class="form-select form-select-sm">
+                                <option>Últimos 7 dias</option>
+                                <option>Últimos 30 dias</option>
+                                <option>Este mês</option>
+                            </select>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-placeholder">
+                                <div class="chart-bars">
+                                    <div class="chart-bar" style="height: 60%;"></div>
+                                    <div class="chart-bar" style="height: 80%;"></div>
+                                    <div class="chart-bar" style="height: 45%;"></div>
+                                    <div class="chart-bar" style="height: 90%;"></div>
+                                    <div class="chart-bar" style="height: 70%;"></div>
+                                    <div class="chart-bar" style="height: 85%;"></div>
+                                    <div class="chart-bar" style="height: 50%;"></div>
+                                </div>
+                                <div class="chart-labels">
+                                    <span>Seg</span>
+                                    <span>Ter</span>
+                                    <span>Qua</span>
+                                    <span>Qui</span>
+                                    <span>Sex</span>
+                                    <span>Sáb</span>
+                                    <span>Dom</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3><i class="fas fa-history"></i> Atividade Recente</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="activity-list">
+                            <div class="activity-item">
+                                <div class="activity-icon bg-success">
+                                    <i class="fas fa-calendar-plus"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title">
+                                        <strong>Novo agendamento</strong>
+                                        <span class="activity-time">há 5 minutos</span>
+                                    </div>
+                                    <p>João Silva agendou Corte de Cabelo para amanhã às 10:00</p>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon bg-primary">
+                                    <i class="fas fa-plus"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title">
+                                        <strong>Serviço adicionado</strong>
+                                        <span class="activity-time">há 2 horas</span>
+                                    </div>
+                                    <p>Novo serviço "Barba Completa" por R$ 35,00</p>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon bg-info">
+                                    <i class="fas fa-user-plus"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title">
+                                        <strong>Novo cliente</strong>
+                                        <span class="activity-time">há 1 dia</span>
+                                    </div>
+                                    <p>Maria Santos cadastrada no sistema</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agendamentos Tab -->
+            <div class="tab-content" id="appointmentsTab">
+                <div class="dashboard-header">
                     <div class="dashboard-title">
                         <h1><i class="fas fa-calendar-alt"></i> Agendamentos</h1>
-                        <p>Gerencie todos os agendamentos da sua empresa</p>
+                        <p>Gerencie todos os agendamentos</p>
                     </div>
 
                     <div class="quick-actions">
                         <button class="btn btn-success" onclick="openNewAppointmentModal()">
                             <i class="fas fa-calendar-plus"></i> Novo Agendamento
                         </button>
-                        <div class="form-group" style="margin: 0;">
-                            <input type="date" id="appointmentDateFilter" class="form-control" style="width: 200px;">
-                        </div>
-                    </div>
-
-                    <div class="cards-container">
-                        <div class="cards-header">
-                            <h2><i class="fas fa-list"></i> Todos os Agendamentos</h2>
-                            <div class="cards-count" id="allAppointmentsCount">0</div>
-                        </div>
-                        <div class="clients-list" id="allAppointmentsList">
-                            <!-- Todos os agendamentos serão carregados aqui -->
+                        <div class="filter-group">
+                            <input type="date" id="appointmentDateFilter" class="form-control">
                         </div>
                     </div>
                 </div>
 
-                <!-- Serviços Tab -->
-                <div class="tab-content" id="servicesTab">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-list"></i> Todos os Agendamentos</h3>
+                        <div class="badge" id="allAppointmentsCount">0</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="appointments-table" id="allAppointmentsList">
+                            <!-- Tabela carregada via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Serviços Tab -->
+            <div class="tab-content" id="servicesTab">
+                <div class="dashboard-header">
                     <div class="dashboard-title">
                         <h1><i class="fas fa-cut"></i> Serviços</h1>
-                        <p>Gerencie os serviços oferecidos pela sua empresa</p>
+                        <p>Gerencie os serviços oferecidos</p>
                     </div>
 
                     <div class="quick-actions">
@@ -198,77 +323,90 @@
                             <i class="fas fa-plus"></i> Novo Serviço
                         </button>
                     </div>
+                </div>
 
-                    <div class="cards-container">
-                        <div class="cards-header">
-                            <h2><i class="fas fa-cut"></i> Serviços Disponíveis</h2>
-                            <div class="cards-count" id="servicesCount">0</div>
-                        </div>
-                        <div class="services-list" id="servicesList">
-                            <!-- Serviços serão carregados aqui -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-cut"></i> Serviços Disponíveis</h3>
+                        <div class="badge" id="servicesCount">0</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="services-grid" id="servicesList">
+                            <!-- Serviços carregados via JS -->
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Clientes Tab -->
-                <div class="tab-content" id="clientsTab">
+            <!-- Clientes Tab -->
+            <div class="tab-content" id="clientsTab">
+                <div class="dashboard-header">
                     <div class="dashboard-title">
                         <h1><i class="fas fa-users"></i> Clientes</h1>
-                        <p>Gerencie todos os clientes cadastrados</p>
-                    </div>
-
-                    <div class="cards-container">
-                        <div class="cards-header">
-                            <h2><i class="fas fa-users"></i> Clientes Cadastrados</h2>
-                            <div class="cards-count" id="clientsCount">0</div>
-                        </div>
-                        <div class="clients-list" id="clientsList">
-                            <!-- Clientes serão carregados aqui -->
-                        </div>
+                        <p>Gerencie sua base de clientes</p>
                     </div>
                 </div>
 
-                <!-- Empresa Tab -->
-                <div class="tab-content" id="companyTab">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-users"></i> Clientes Cadastrados</h3>
+                        <div class="badge" id="clientsCount">0</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="clients-table" id="clientsList">
+                            <!-- Clientes carregados via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empresa Tab -->
+            <div class="tab-content" id="companyTab">
+                <div class="dashboard-header">
                     <div class="dashboard-title">
                         <h1><i class="fas fa-building"></i> Minha Empresa</h1>
-                        <p>Configure as informações da sua empresa</p>
+                        <p>Configure as informações do seu negócio</p>
                     </div>
+                </div>
 
-                    <div class="cards-container">
-                        <div class="cards-header">
-                            <h2><i class="fas fa-info-circle"></i> Informações da Empresa</h2>
-                        </div>
-                        <div class="modal-body" style="border: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-info-circle"></i> Informações da Empresa</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-grid">
                             <div class="form-group">
                                 <label>Nome da Empresa</label>
-                                <input type="text" id="companyName" class="form-control" value="Carregando...">
+                                <input type="text" id="companyName" class="form-control">
                             </div>
                             <div class="form-group">
                                 <label>Tipo de Negócio</label>
-                                <input type="text" id="companyType" class="form-control" value="Carregando...">
+                                <input type="text" id="companyType" class="form-control">
                             </div>
                             <div class="form-group">
                                 <label>Telefone</label>
-                                <input type="text" id="companyPhone" class="form-control" value="Carregando...">
+                                <input type="text" id="companyPhone" class="form-control">
                             </div>
                             <div class="form-group">
                                 <label>WhatsApp</label>
-                                <input type="text" id="companyWhatsApp" class="form-control" value="Carregando...">
+                                <input type="text" id="companyWhatsApp" class="form-control">
                             </div>
-                            <div class="form-group">
+                            <div class="form-group full-width">
                                 <label>URL Personalizada</label>
                                 <div class="input-group">
-                                    <input type="text" id="companySlug" class="form-control" value="Carregando..." readonly>
-                                    <button class="btn btn-info" onclick="copyCompanyUrl()">
+                                    <div class="input-prefix">agendame.com/</div>
+                                    <input type="text" id="companySlug" class="form-control" readonly>
+                                    <button class="btn btn-outline" onclick="copyCompanyUrl()">
                                         <i class="fas fa-copy"></i> Copiar
                                     </button>
                                 </div>
-                                <small style="color: var(--text-light); margin-top: 5px; display: block;">
-                                    Compartilhe este link para seus clientes agendarem:
-                                    <span id="companyUrl">Carregando...</span>
+                                <small class="form-text">
+                                    Compartilhe: <span id="companyUrl" class="text-primary">carregando...</span>
                                 </small>
                             </div>
+                        </div>
+
+                        <div class="form-actions">
                             <button class="btn btn-primary" onclick="saveCompanyInfo()">
                                 <i class="fas fa-save"></i> Salvar Alterações
                             </button>
@@ -276,140 +414,793 @@
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
+        </div>
+    </main>
 
+    <!-- Modals -->
     <!-- Modal: Novo Serviço -->
     <div class="modal" id="newServiceModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-plus"></i> Novo Serviço</h3>
-                <button class="modal-close" onclick="closeModal('newServiceModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="newServiceForm">
-                    <div class="form-group">
-                        <label for="serviceName">Nome do Serviço *</label>
-                        <input type="text" id="serviceName" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="serviceDescription">Descrição</label>
-                        <textarea id="serviceDescription" class="form-control" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="servicePrice">Preço (R$) *</label>
-                        <input type="number" id="servicePrice" class="form-control" step="0.01" min="0" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="serviceDuration">Duração (minutos) *</label>
-                        <input type="number" id="serviceDuration" class="form-control" min="5" value="60" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="serviceOrder">Ordem de Exibição</label>
-                        <input type="number" id="serviceOrder" class="form-control" min="0" value="0">
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="serviceActive" checked> Serviço Ativo
-                        </label>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('newServiceModal')">Cancelar</button>
-                <button class="btn btn-primary" onclick="saveNewService()">Salvar Serviço</button>
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-plus"></i> Novo Serviço</h3>
+                    <button class="modal-close" onclick="closeModal('newServiceModal')">×</button>
+                </div>
+                <div class="modal-body">
+                    <form id="newServiceForm">
+                        <div class="form-group">
+                            <label for="serviceName">Nome do Serviço *</label>
+                            <input type="text" id="serviceName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="serviceDescription">Descrição</label>
+                            <textarea id="serviceDescription" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="servicePrice">Preço (R$) *</label>
+                            <input type="number" id="servicePrice" class="form-control" step="0.01" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="serviceDuration">Duração (minutos) *</label>
+                            <input type="number" id="serviceDuration" class="form-control" min="5" value="60" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="serviceOrder">Ordem de Exibição</label>
+                            <input type="number" id="serviceOrder" class="form-control" min="0" value="0">
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" id="serviceActive" class="form-check-input" checked>
+                            <label for="serviceActive" class="form-check-label">Serviço Ativo</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal('newServiceModal')">Cancelar</button>
+                    <button class="btn btn-primary" onclick="saveNewService()">Salvar Serviço</button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Modal: Novo Agendamento -->
     <div class="modal" id="newAppointmentModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-calendar-plus"></i> Novo Agendamento</h3>
-                <button class="modal-close" onclick="closeModal('newAppointmentModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="newAppointmentForm">
-                    <div class="form-group">
-                        <label for="appointmentClientName">Nome do Cliente *</label>
-                        <input type="text" id="appointmentClientName" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="appointmentClientPhone">Telefone *</label>
-                        <input type="text" id="appointmentClientPhone" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="appointmentService">Serviço *</label>
-                        <select id="appointmentService" class="form-control" required>
-                            <option value="">Selecione um serviço...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="appointmentDate">Data *</label>
-                        <input type="date" id="appointmentDate" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="appointmentTime">Horário *</label>
-                        <input type="time" id="appointmentTime" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="appointmentNotes">Observações</label>
-                        <textarea id="appointmentNotes" class="form-control" rows="3"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('newAppointmentModal')">Cancelar</button>
-                <button class="btn btn-success" onclick="saveNewAppointment()">Salvar Agendamento</button>
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-calendar-plus"></i> Novo Agendamento</h3>
+                    <button class="modal-close" onclick="closeModal('newAppointmentModal')">×</button>
+                </div>
+                <div class="modal-body">
+                    <form id="newAppointmentForm">
+                        <div class="form-group">
+                            <label for="appointmentClientName">Nome do Cliente *</label>
+                            <input type="text" id="appointmentClientName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="appointmentClientPhone">Telefone *</label>
+                            <input type="text" id="appointmentClientPhone" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="appointmentService">Serviço *</label>
+                            <select id="appointmentService" class="form-control" required>
+                                <option value="">Selecione um serviço...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="appointmentDate">Data *</label>
+                            <input type="date" id="appointmentDate" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="appointmentTime">Horário *</label>
+                            <input type="time" id="appointmentTime" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="appointmentNotes">Observações</label>
+                            <textarea id="appointmentNotes" class="form-control" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal('newAppointmentModal')">Cancelar</button>
+                    <button class="btn btn-success" onclick="saveNewAppointment()">Salvar Agendamento</button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Modal: Editar Serviço -->
     <div class="modal" id="editServiceModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-edit"></i> Editar Serviço</h3>
-                <button class="modal-close" onclick="closeModal('editServiceModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="editServiceForm">
-                    <input type="hidden" id="editServiceId">
-                    <div class="form-group">
-                        <label for="editServiceName">Nome do Serviço *</label>
-                        <input type="text" id="editServiceName" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editServiceDescription">Descrição</label>
-                        <textarea id="editServiceDescription" class="form-control" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="editServicePrice">Preço (R$) *</label>
-                        <input type="number" id="editServicePrice" class="form-control" step="0.01" min="0" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editServiceDuration">Duração (minutos) *</label>
-                        <input type="number" id="editServiceDuration" class="form-control" min="5" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editServiceOrder">Ordem de Exibição</label>
-                        <input type="number" id="editServiceOrder" class="form-control" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="editServiceActive"> Serviço Ativo
-                        </label>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('editServiceModal')">Cancelar</button>
-                <button class="btn btn-primary" onclick="saveEditedService()">Salvar Alterações</button>
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-edit"></i> Editar Serviço</h3>
+                    <button class="modal-close" onclick="closeModal('editServiceModal')">×</button>
+                </div>
+                <div class="modal-body">
+                    <form id="editServiceForm">
+                        <input type="hidden" id="editServiceId">
+                        <div class="form-group">
+                            <label for="editServiceName">Nome do Serviço *</label>
+                            <input type="text" id="editServiceName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editServiceDescription">Descrição</label>
+                            <textarea id="editServiceDescription" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="editServicePrice">Preço (R$) *</label>
+                            <input type="number" id="editServicePrice" class="form-control" step="0.01" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editServiceDuration">Duração (minutos) *</label>
+                            <input type="number" id="editServiceDuration" class="form-control" min="5" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editServiceOrder">Ordem de Exibição</label>
+                            <input type="number" id="editServiceOrder" class="form-control" min="0">
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" id="editServiceActive" class="form-check-input">
+                            <label for="editServiceActive" class="form-check-label">Serviço Ativo</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal('editServiceModal')">Cancelar</button>
+                    <button class="btn btn-primary" onclick="saveEditedService()">Salvar Alterações</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <script type="module" src="{{url_for('static', path='main.js')}}"></script>
+    <!-- Modal: Upgrade Trial -->
+    <div class="modal" id="trialUpgradeModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-crown"></i> Upgrade para Premium</h3>
+                    <button class="modal-close" onclick="closeModal('trialUpgradeModal')">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="upgrade-content">
+                        <div class="upgrade-icon">
+                            <i class="fas fa-gem"></i>
+                        </div>
+                        <h4>Mantenha todos os seus dados!</h4>
+                        <p>Seu trial está acabando. Faça upgrade para manter acesso completo ao sistema.</p>
+
+                        <div class="upgrade-features">
+                            <div class="feature">
+                                <i class="fas fa-check"></i>
+                                <span>Acesso vitalício</span>
+                            </div>
+                            <div class="feature">
+                                <i class="fas fa-check"></i>
+                                <span>Suporte 24/7</span>
+                            </div>
+                            <div class="feature">
+                                <i class="fas fa-check"></i>
+                                <span>Relatórios avançados</span>
+                            </div>
+                            <div class="feature">
+                                <i class="fas fa-check"></i>
+                                <span>Atualizações constantes</span>
+                            </div>
+                        </div>
+
+                        <div class="price-card">
+                            <div class="price">R$ 19,99</div>
+                            <div class="period">/mês • Cancele quando quiser</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="handleTrialUpgrade()">
+                        <i class="fas fa-bolt"></i> Fazer Upgrade Agora
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Detalhes do Agendamento -->
+<div class="modal appointment-details-modal" id="appointmentDetailsModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-calendar-alt"></i> Detalhes do Agendamento</h3>
+                <button class="modal-close" onclick="closeModal('appointmentDetailsModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Cliente</div>
+                        <div class="detail-value" id="detailClientName">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Telefone</div>
+                        <div class="detail-value" id="detailClientPhone">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Serviço</div>
+                        <div class="detail-value" id="detailService">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Preço</div>
+                        <div class="detail-value" id="detailPrice">R$ 0,00</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Data</div>
+                        <div class="detail-value" id="detailDate">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Horário</div>
+                        <div class="detail-value" id="detailTime">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value">
+                            <span class="status-badge confirmed" id="detailStatus">Confirmado</span>
+                        </div>
+                    </div>
+                    <div class="detail-item full-width">
+                        <div class="detail-label">Observações</div>
+                        <div class="detail-value" id="detailNotes">-</div>
+                    </div>
+                    <div class="detail-item full-width">
+                        <div class="detail-label">Criado em</div>
+                        <div class="detail-value" id="detailCreatedAt">-</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('appointmentDetailsModal')">Fechar</button>
+                <button class="btn btn-primary" onclick="editAppointmentFromDetails()">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Editar Agendamento -->
+<div class="modal edit-appointment-modal" id="editAppointmentModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Editar Agendamento</h3>
+                <button class="modal-close" onclick="closeModal('editAppointmentModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="editAppointmentForm">
+                    <input type="hidden" id="editAppointmentId">
+                    <div class="form-group">
+                        <label for="editAppointmentClientName">Nome do Cliente *</label>
+                        <input type="text" id="editAppointmentClientName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAppointmentClientPhone">Telefone *</label>
+                        <input type="text" id="editAppointmentClientPhone" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAppointmentService">Serviço *</label>
+                        <select id="editAppointmentService" class="form-control" required>
+                            <option value="">Selecione um serviço...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAppointmentDate">Data *</label>
+                        <input type="date" id="editAppointmentDate" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAppointmentTime">Horário *</label>
+                        <input type="time" id="editAppointmentTime" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAppointmentStatus">Status *</label>
+                        <select id="editAppointmentStatus" class="form-control" required>
+                            <option value="confirmed">Confirmado</option>
+                            <option value="pending">Pendente</option>
+                            <option value="completed">Concluído</option>
+                            <option value="canceled">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAppointmentNotes">Observações</label>
+                        <textarea id="editAppointmentNotes" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('editAppointmentModal')">Cancelar</button>
+                <button class="btn btn-success" onclick="saveEditedAppointment()">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Detalhes do Cliente -->
+<div class="modal client-details-modal" id="clientDetailsModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user"></i> Detalhes do Cliente</h3>
+                <button class="modal-close" onclick="closeModal('clientDetailsModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="client-info">
+                    <div class="client-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="client-basic-info">
+                        <h4 id="detailClientFullName">Carregando...</h4>
+                        <p id="detailClientContact">-</p>
+                        <p id="detailClientEmail">-</p>
+                    </div>
+                </div>
+
+                <div class="client-stats">
+                    <div class="client-stat">
+                        <div class="client-stat-value" id="detailClientTotalAppointments">0</div>
+                        <div class="client-stat-label">Agendamentos</div>
+                    </div>
+                    <div class="client-stat">
+                        <div class="client-stat-value" id="detailClientTotalSpent">R$ 0</div>
+                        <div class="client-stat-label">Total Gasto</div>
+                    </div>
+                    <div class="client-stat">
+                        <div class="client-stat-value" id="detailClientLastVisit">-</div>
+                        <div class="client-stat-label">Última Visita</div>
+                    </div>
+                </div>
+
+                <div class="detail-item">
+                    <div class="detail-label">Cadastrado em</div>
+                    <div class="detail-value" id="detailClientCreatedAt">-</div>
+                </div>
+
+                <div class="detail-item">
+                    <div class="detail-label">Observações</div>
+                    <div class="detail-value" id="detailClientNotes">-</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('clientDetailsModal')">Fechar</button>
+                <button class="btn btn-primary" onclick="editClientFromDetails()">
+                    <i class="fas fa-edit"></i> Editar Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Confirmar Exclusão -->
+<div class="modal delete-confirm-modal" id="deleteConfirmModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-trash"></i> Confirmar Exclusão</h3>
+                <button class="modal-close" onclick="closeModal('deleteConfirmModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="confirm-content">
+                    <div class="confirm-icon">
+                        <i class="fas fa-exclamation"></i>
+                    </div>
+                    <h4>Tem certeza que deseja excluir?</h4>
+                    <p id="deleteItemName">Este item</p>
+                    <p class="text-danger">Esta ação não pode ser desfeita!</p>
+
+                    <input type="hidden" id="deleteItemId">
+                    <input type="hidden" id="deleteItemType">
+
+                    <div class="delete-actions">
+                        <button class="btn btn-secondary" onclick="closeModal('deleteConfirmModal')">
+                            Cancelar
+                        </button>
+                        <button class="btn btn-danger" onclick="confirmDelete()">
+                            <i class="fas fa-trash"></i> Excluir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Meu Perfil -->
+<div class="modal profile-modal" id="profileModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user"></i> Meu Perfil</h3>
+                <button class="modal-close" onclick="closeModal('profileModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <div class="profile-avatar-img">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <button class="change-avatar-btn">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    </div>
+                    <h4 id="profileUserName">Carregando...</h4>
+                    <p id="profileUserEmail">carregando@email.com</p>
+                </div>
+
+                <form id="profileForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="profileFirstName">Nome</label>
+                            <input type="text" id="profileFirstName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="profileLastName">Sobrenome</label>
+                            <input type="text" id="profileLastName" class="form-control" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="profileEmail">E-mail</label>
+                            <input type="email" id="profileEmail" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="profilePhone">Telefone</label>
+                            <input type="text" id="profilePhone" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="profileWhatsApp">WhatsApp</label>
+                            <input type="text" id="profileWhatsApp" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-primary" type="button" onclick="saveProfile()">
+                            <i class="fas fa-save"></i> Salvar Alterações
+                        </button>
+                        <button class="btn btn-outline" type="button" onclick="openChangePasswordModal()">
+                            <i class="fas fa-key"></i> Alterar Senha
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Configurações -->
+<div class="modal settings-modal" id="settingsModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> Configurações</h3>
+                <button class="modal-close" onclick="closeModal('settingsModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-tabs">
+                    <button class="settings-tab active" data-tab="general">Geral</button>
+                    <button class="settings-tab" data-tab="notifications">Notificações</button>
+                    <button class="settings-tab" data-tab="privacy">Privacidade</button>
+                </div>
+
+                <div class="settings-tab-content active" id="generalTab">
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Tema</strong>
+                            <span>Escolha entre tema claro ou escuro</span>
+                        </div>
+                        <select class="form-control" style="width: auto;">
+                            <option value="light">Claro</option>
+                            <option value="dark">Escuro</option>
+                            <option value="system">Sistema</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Idioma</strong>
+                            <span>Linguagem da interface</span>
+                        </div>
+                        <select class="form-control" style="width: auto;">
+                            <option value="pt">Português</option>
+                            <option value="en">Inglês</option>
+                            <option value="es">Espanhol</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Fuso Horário</strong>
+                            <span>Defina seu fuso horário local</span>
+                        </div>
+                        <select class="form-control" style="width: auto;">
+                            <option value="America/Sao_Paulo">Brasília (GMT-3)</option>
+                            <option value="America/New_York">Nova York (GMT-4)</option>
+                            <option value="Europe/London">Londres (GMT+1)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-tab-content" id="notificationsTab">
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>E-mail de Notificações</strong>
+                            <span>Receba notificações por e-mail</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Notificações de Agendamento</strong>
+                            <span>Alertas de novos agendamentos</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Lembretes para Clientes</strong>
+                            <span>Enviar lembretes para clientes</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-tab-content" id="privacyTab">
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Exportar Dados</strong>
+                            <span>Baixe uma cópia dos seus dados</span>
+                        </div>
+                        <button class="btn btn-outline btn-sm">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Excluir Conta</strong>
+                            <span>Remover permanentemente sua conta</span>
+                        </div>
+                        <button class="btn btn-danger btn-sm">
+                            <i class="fas fa-trash"></i> Excluir Conta
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveSettings()">
+                    <i class="fas fa-save"></i> Salvar Configurações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Alterar Senha -->
+<div class="modal" id="changePasswordModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-key"></i> Alterar Senha</h3>
+                <button class="modal-close" onclick="closeModal('changePasswordModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label for="currentPassword">Senha Atual *</label>
+                        <input type="password" id="currentPassword" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">Nova Senha *</label>
+                        <input type="password" id="newPassword" class="form-control" required>
+                        <small class="form-text">Mínimo de 8 caracteres</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirmar Nova Senha *</label>
+                        <input type="password" id="confirmPassword" class="form-control" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('changePasswordModal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="savePassword()">Salvar Senha</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Scripts -->
+    <script type="module" src="{{ url_for('static', path='main.js') }}"></script>
+    <script type="module" src="{{ url_for('static', path='clients.js') }}"></script>
+
+
+
+    <script>
+        // Funções globais para uso no HTML
+        window.closeModal = function(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        };
+
+        window.showTrialUpgradeModal = function() {
+            document.getElementById('trialUpgradeModal').classList.add('show');
+        };
+
+        // Inicializar quando o DOM estiver carregado
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar se é conta trial
+            const userData = JSON.parse(localStorage.getItem('agendame_user') || '{}');
+            if (userData.is_trial) {
+                const trialBanner = document.getElementById('trialBanner');
+                const trialDays = document.getElementById('trialDays');
+
+                trialBanner.style.display = 'block';
+                trialDays.textContent = `${userData.days_remaining || 7} dias restantes`;
+
+                // Se restam 3 dias ou menos, destacar
+                if (userData.days_remaining <= 3) {
+                    trialBanner.style.background = 'linear-gradient(135deg, #f59e0b, #fbbf24)';
+                }
+            }
+
+            // Configurar tabs
+            document.querySelectorAll('.tab-btn').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    window.switchTab(tabId);
+                });
+            });
+
+            // Configurar dropdown do usuário
+            document.querySelector('.dropdown-toggle').addEventListener('click', function() {
+                document.querySelector('.dropdown-menu').classList.toggle('show');
+            });
+
+            // Fechar dropdown ao clicar fora
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.dropdown')) {
+                    document.querySelector('.dropdown-menu').classList.remove('show');
+                }
+            });
+
+
+        });
+    </script>
+    <script>
+    // Função para abrir modais
+    window.openModal = function(modalId) {
+        document.getElementById(modalId).classList.add('show');
+    };
+
+    // Configurar tabs de configurações
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tabs de configurações
+        document.querySelectorAll('.settings-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+
+                // Remover active de todas as tabs
+                document.querySelectorAll('.settings-tab').forEach(t => {
+                    t.classList.remove('active');
+                });
+                document.querySelectorAll('.settings-tab-content').forEach(c => {
+                    c.classList.remove('active');
+                });
+
+                // Adicionar active na tab clicada
+                this.classList.add('active');
+                document.getElementById(tabId + 'Tab').classList.add('active');
+            });
+        });
+
+        // Fechar modais ao clicar fora
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('show');
+                }
+            });
+        });
+
+        // Configurar dropdown do usuário para abrir modais
+        document.querySelector('.dropdown-item[href="#"]').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (this.querySelector('i.fa-user')) {
+                openModal('profileModal');
+            } else if (this.querySelector('i.fa-cog')) {
+                openModal('settingsModal');
+            }
+            document.querySelector('.dropdown-menu').classList.remove('show');
+        });
+    });
+
+    // Funções auxiliares para os modais
+    window.openChangePasswordModal = function() {
+        closeModal('profileModal');
+        setTimeout(() => {
+            openModal('changePasswordModal');
+        }, 300);
+    };
+
+    window.editAppointmentFromDetails = function() {
+        closeModal('appointmentDetailsModal');
+        setTimeout(() => {
+            openModal('editAppointmentModal');
+        }, 300);
+    };
+
+    window.editClientFromDetails = function() {
+        closeModal('clientDetailsModal');
+        // Implementar função para abrir modal de edição de cliente
+        console.log('Abrir edição de cliente');
+    };
+
+    // Função para abrir modal de confirmação de exclusão
+    window.showDeleteConfirm = function(itemId, itemType, itemName) {
+        document.getElementById('deleteItemId').value = itemId;
+        document.getElementById('deleteItemType').value = itemType;
+        document.getElementById('deleteItemName').textContent = itemName;
+        openModal('deleteConfirmModal');
+    };
+
+    window.confirmDelete = function() {
+        const itemId = document.getElementById('deleteItemId').value;
+        const itemType = document.getElementById('deleteItemType').value;
+
+        console.log(`Excluir ${itemType} com ID ${itemId}`);
+        // Implementar lógica de exclusão aqui
+
+        closeModal('deleteConfirmModal');
+        showAlert(`${itemType.charAt(0).toUpperCase() + itemType.slice(1)} excluído com sucesso!`, 'success');
+    };
+
+    // Função para mostrar alertas
+    window.showAlert = function(message, type = 'info') {
+        const alertContainer = document.getElementById('alertContainer');
+        const alertId = 'alert-' + Date.now();
+
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type}`;
+        alert.id = alertId;
+        alert.innerHTML = `
+            <div class="alert-content">
+                <i class="fas fa-${getAlertIcon(type)}"></i>
+                <span>${message}</span>
+                <button onclick="document.getElementById('${alertId}').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+
+        alertContainer.appendChild(alert);
+
+        // Remover automaticamente após 5 segundos
+        setTimeout(() => {
+            if (document.getElementById(alertId)) {
+                document.getElementById(alertId).remove();
+            }
+        }, 5000);
+    };
+
+    function getAlertIcon(type) {
+        const icons = {
+            'success': 'check-circle',
+            'warning': 'exclamation-triangle',
+            'error': 'times-circle',
+            'info': 'info-circle'
+        };
+        return icons[type] || 'info-circle';
+    }
+</script>
 </body>
 </html>

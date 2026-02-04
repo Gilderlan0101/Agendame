@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.core.config import AuthMiddleware
 from app.database.init_database import (
     close_database,
     init_database,
@@ -16,15 +17,13 @@ from app.database.init_database import (
 )
 from app.routes import router
 from app.routes.router import register_routes
-from app.core.config import AuthMiddleware
+
 # ======================================================
 # BASE PATHS
 # ======================================================
 
 BASE_DIR = Path(__file__).resolve().parent
 static_dir = BASE_DIR / 'app' / 'static'
-
-
 
 
 # ======================================================
@@ -52,6 +51,7 @@ async def lifespan(app: FastAPI):
 # ======================================================
 # SERVER CLASS
 # ======================================================
+
 
 class Server:
     """
@@ -116,11 +116,14 @@ class Server:
     def setup_middlewares(self) -> None:
         """Configuração global de middlewares"""
 
-        ORIGINS_DEFAULT = os.getenv("ORIGIN")
+        ORIGINS_DEFAULT = os.getenv('ORIGIN')
         # Middleware de CORS
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=[str(ORIGINS_DEFAULT), 'http://192.168.1.103:8000/'],  # Em produção, especifique os domínios
+            allow_origins=[
+                str(ORIGINS_DEFAULT),
+                'http://192.168.1.103:8000/',
+            ],  # Em produção, especifique os domínios
             allow_credentials=True,
             allow_methods=['*'],
             allow_headers=['*'],
@@ -146,25 +149,27 @@ class Server:
         from fastapi.responses import JSONResponse
 
         @self.app.exception_handler(RequestValidationError)
-        async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        async def validation_exception_handler(
+            request: Request, exc: RequestValidationError
+        ):
             return JSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                content={"detail": exc.errors(), "body": exc.body},
+                content={'detail': exc.errors(), 'body': exc.body},
             )
 
         from app.core.config import templates
 
         @self.app.exception_handler(404)
-        async def not_found_exception_handler(request: Request, exc: Exception):
-            if request.url.path.startswith('/api/') or request.url.path.startswith('/auth/'):
-                print("API 404 Not Found")
+        async def not_found_exception_handler(
+            request: Request, exc: Exception
+        ):
+            if request.url.path.startswith(
+                '/api/'
+            ) or request.url.path.startswith('/auth/'):
+                print('API 404 Not Found')
                 return templates.TemplateResponse(
-                    "404.html",
-                    {"request": request},
-                    status_code=404
+                    '404.html', {'request': request}, status_code=404
                 )
-
-
 
     # --------------------------------------------------
 
@@ -172,14 +177,16 @@ class Server:
         """Inicia o servidor"""
 
         print(f"\n{'='*50}")
-        print("🚀 Iniciando Agendame")
-        print(f"📁 Diretório estático: {static_dir}")
-        print(f"🌐 URL: http://{host if host != '0.0.0.0' else 'localhost'}:{port}")
-        print(f"📚 Documentação: http://localhost:{port}/docs")
+        print('🚀 Iniciando Agendame')
+        print(f'📁 Diretório estático: {static_dir}')
+        print(
+            f"🌐 URL: http://{host if host != '0.0.0.0' else 'localhost'}:{port}"
+        )
+        print(f'📚 Documentação: http://localhost:{port}/docs')
         print(f"{'='*50}\n")
 
         uvicorn.run(
-            "main:app",
+            'main:app',
             host=host,
             port=port,
             reload=os.getenv('ENVIRONMENT', 'DEVELOPMENT') == 'DEVELOPMENT',

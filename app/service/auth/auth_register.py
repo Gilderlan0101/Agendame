@@ -1,12 +1,17 @@
-from typing import Any, Dict
 from datetime import datetime, timedelta, timezone
+from re import search
+from typing import Any, Dict
+
 from fastapi import HTTPException, status
 
 from app.models.trial import TrialAccount
 from app.models.user import User
 from app.service.jwt.auth import get_hashed_password, verify_password
-from app.utils.hashed_email import (create_email_search_hash, get_hashed_email,
-                                    verify_email)
+from app.utils.hashed_email import (
+    create_email_search_hash,
+    get_hashed_email,
+    verify_email,
+)
 
 
 async def create_account(target):
@@ -43,6 +48,7 @@ async def create_account(target):
                 'username': target.get('username'),
                 'email': target.get('email'),
                 'status': True,
+                'is_trial': True,
             }
 
     except Exception as e:
@@ -166,7 +172,7 @@ class SignupFreeTrial:
                         account_target_id=account.id
                     ),
                     'status': True,
-                    'trial': True,
+                    'is_trial': True,
                 }
 
         except Exception as e:
