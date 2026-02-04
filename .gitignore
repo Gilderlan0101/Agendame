@@ -312,7 +312,6 @@ pip-delete-this-directory.txt
 # ============================================================================
 
 # Arquivos de configuração com credenciais
-config.py
 secrets.py
 credentials.py
 settings_local.py
