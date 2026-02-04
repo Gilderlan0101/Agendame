@@ -1,13 +1,19 @@
-// auth.js - Gerenciamento de autenticação
+// auth.js - Gerenciamento de autenticação CORRIGIDO (SEM USUÁRIO FALSO)
 
 let currentUser = null;
 let authToken = null;
+
+// Configurações baseadas no ambiente
+const IS_PRODUCTION = window.location.protocol === 'https:' || window.location.hostname !== 'localhost';
+const API_BASE_URL = 'https://agendame.onrender.com/'; // URL do seu backend no Render
 
 /**
  * Inicializa o sistema de autenticação
  */
 export function initAuth() {
     console.log('🔐 Inicializando sistema de autenticação...');
+    console.log(`🌍 Ambiente: ${IS_PRODUCTION ? 'Produção' : 'Desenvolvimento'}`);
+    console.log(`🌐 API Base: ${API_BASE_URL}`);
 
     // Verificar se há token salvo
     authToken = getCookie('access_token') || localStorage.getItem('agendame_token');
@@ -31,50 +37,94 @@ export async function loginUser(email, password) {
         // Mostrar loading
         showLoading(true);
 
-        // Preparar dados do formulário no formato OAuth2
-        const formData = new FormData();
+        // Preparar dados do formulário
+        const formData = new URLSearchParams();
         formData.append('username', email);
         formData.append('password', password);
 
+        console.log('📤 Enviando requisição de login...');
+
         // Fazer requisição de login
-        const response = await fetch('/auth/login', {
+        const response = await fetch(`${API_BASE_URL}auth/login`, {
             method: 'POST',
             body: formData,
             headers: {
-                'Accept': 'application/json'
-            }
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            credentials: 'include', // IMPORTANTE: para cookies funcionarem
         });
+
+        console.log('📥 Resposta recebida:', response.status, response.statusText);
 
         if (!response.ok) {
             let errorMessage = 'Credenciais inválidas';
+
             try {
-                const errorData = await response.json();
-                errorMessage = errorData.detail || errorMessage;
+                // Tentar ler o corpo da resposta
+                const text = await response.text();
+                console.log('📄 Corpo da resposta (erro):', text);
+
+                if (text) {
+                    const errorData = JSON.parse(text);
+                    errorMessage = errorData.detail || errorData.message || errorMessage;
+                }
             } catch (e) {
+                console.log('❌ Não foi possível parsear JSON de erro:', e);
                 // Se não conseguir parsear JSON, usar status
                 if (response.status === 401) {
                     errorMessage = 'E-mail ou senha incorretos';
                 } else if (response.status === 403) {
                     errorMessage = 'Conta desativada ou sem acesso';
+                } else if (response.status === 404) {
+                    errorMessage = 'Endpoint não encontrado. Verifique a URL.';
+                } else if (response.status >= 500) {
+                    errorMessage = 'Erro interno do servidor. Tente novamente.';
                 }
             }
+
             throw new Error(errorMessage);
         }
 
         const data = await response.json();
+        console.log('✅ Dados recebidos do login:', data);
 
         // Salvar token (se vier na resposta)
         if (data.access_token) {
             authToken = data.access_token;
             saveToken(data.access_token);
+            console.log('💾 Token salvo com sucesso');
         }
 
-        if (data.is_trial){
+        if (data.is_trial) {
             localStorage.setItem('is_trial', '1');
+            console.log('🎯 Conta trial detectada');
         }
 
-        // Carregar informações do usuário
-        await loadUserData();
+        // Salvar dados básicos do usuário do login
+        if (data.user_id && data.email) {
+            currentUser = {
+                id: data.user_id,
+                email: data.email,
+                username: data.username || data.email.split('@')[0],
+                business_name: data.business_name || 'Minha Empresa',
+                is_trial: data.is_trial || false,
+                slug: data.slug || ''
+            };
+
+            localStorage.setItem('agendame_user', JSON.stringify(currentUser));
+            localStorage.setItem('agendame_token', authToken);
+
+            console.log('👤 Dados básicos do usuário salvos:', currentUser);
+        }
+
+        // Tentar carregar dados completos do usuário
+        try {
+            await loadUserData();
+        } catch (loadError) {
+            console.warn('⚠️ Não foi possível carregar dados completos, usando dados básicos:', loadError);
+            // Continuamos com os dados básicos que já temos
+        }
 
         // Mostrar mensagem de sucesso
         showMessage('Login realizado com sucesso!', 'success');
@@ -85,8 +135,18 @@ export async function loginUser(email, password) {
         return true;
 
     } catch (error) {
-        console.error('🚨 Erro no login:', error);
-        showMessage(error.message || 'Erro ao realizar login', 'error');
+        console.error('🚨 Erro completo no login:', error);
+
+        // Mensagens mais específicas
+        let userMessage = error.message;
+
+        if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+            userMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
+        } else if (error.message.includes('fetch')) {
+            userMessage = 'Não foi possível conectar ao servidor.';
+        }
+
+        showMessage(userMessage, 'error');
         return false;
 
     } finally {
@@ -95,46 +155,114 @@ export async function loginUser(email, password) {
 }
 
 /**
- * Carrega dados do usuário atual
+ * Carrega dados COMPLETOS do usuário atual
  */
 async function loadUserData() {
     try {
-        console.log('👤 Carregando dados do usuário...');
+        console.log('👤 Carregando dados completos do usuário...');
 
-        const response = await fetch('/auth/me', {
+        // Verificar se temos token
+        if (!authToken) {
+            console.warn('⚠️ Nenhum token disponível para carregar dados');
+            throw new Error('Token não disponível');
+        }
+
+        const response = await fetch(`${API_BASE_URL}auth/me`, {
             headers: {
+                'Accept': 'application/json',
                 'Authorization': `Bearer ${authToken}`,
-                'Accept': 'application/json'
-            }
+            },
+            credentials: 'include',
         });
 
-        if (response.ok) {
-            currentUser = await response.json();
-            console.log('✅ Dados do usuário carregados:', currentUser);
+        console.log('📊 Status da requisição /auth/me:', response.status);
 
-            // Salvar no localStorage para persistência
+        if (response.ok) {
+            const userData = await response.json();
+            console.log('✅ Dados completos do usuário carregados:', userData);
+
+            // Atualizar currentUser com dados completos
+            currentUser = userData;
+
+            // Atualizar localStorage com dados completos
             localStorage.setItem('agendame_user', JSON.stringify(currentUser));
-            localStorage.setItem('agendame_token', authToken);
             localStorage.setItem('is_trial', currentUser.is_trial ? '1' : '0');
+
+            // Atualizar interface
+            updateUserInterface();
 
             return currentUser;
         } else {
-            console.warn('⚠️ Não foi possível carregar dados do usuário');
-            currentUser = {
-                email: 'usuario@exemplo.com',
-                name: 'Usuário'
-            };
-            return currentUser;
+            const errorText = await response.text();
+            console.warn('⚠️ Não foi possível carregar dados completos do usuário:', response.status, errorText);
+
+            // Tentar usar dados básicos se disponíveis
+            const storedUser = localStorage.getItem('agendame_user');
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                console.log('↩️ Usando dados básicos armazenados localmente');
+                return currentUser;
+            }
+
+            // Se não temos dados, lançar erro - NÃO CRIAR USUÁRIO FALSO
+            throw new Error('Não foi possível carregar dados do usuário');
         }
 
     } catch (error) {
         console.error('🚨 Erro ao carregar dados do usuário:', error);
-        // Criar usuário básico em caso de erro
-        currentUser = {
-            email: 'usuario@exemplo.com',
-            name: 'Usuário'
-        };
-        return currentUser;
+
+        // NÃO CRIAR USUÁRIO FALSO
+        // Apenas propagar o erro para quem chamou
+        throw error;
+    }
+}
+
+/**
+ * Atualiza a interface com dados do usuário
+ */
+function updateUserInterface() {
+    try {
+        if (!currentUser) {
+            console.warn('⚠️ Nenhum usuário disponível para atualizar interface');
+            return;
+        }
+
+        // Atualizar nome do usuário
+        const userNameElement = document.getElementById('userName');
+        if (userNameElement) {
+            userNameElement.textContent = currentUser.name || currentUser.username || currentUser.email || 'Usuário';
+        }
+
+        // Atualizar nome da empresa
+        const userBusinessElement = document.getElementById('userBusiness');
+        if (userBusinessElement) {
+            userBusinessElement.textContent = currentUser.business_name || 'Agendame';
+        }
+
+        // Atualizar saudação no dashboard
+        const userGreetingElement = document.getElementById('userGreeting');
+        if (userGreetingElement) {
+            userGreetingElement.textContent = currentUser.name || currentUser.username || 'Usuário';
+        }
+
+        // Mostrar/ocultar banner trial
+        const trialBanner = document.getElementById('trialBanner');
+        if (trialBanner) {
+            const isTrial = currentUser.is_trial || localStorage.getItem('is_trial') === '1';
+            trialBanner.style.display = isTrial ? 'block' : 'none';
+
+            if (isTrial) {
+                const trialDaysElement = document.getElementById('trialDays');
+                if (trialDaysElement) {
+                    trialDaysElement.textContent = '7 dias restantes';
+                }
+            }
+        }
+
+        console.log('✅ Interface atualizada com dados do usuário');
+
+    } catch (error) {
+        console.error('Erro ao atualizar interface:', error);
     }
 }
 
@@ -145,12 +273,14 @@ async function validateTokenAndLoadUser() {
     try {
         console.log('🔍 Validando token...');
 
-        const response = await fetch('/auth/me', {
+        const response = await fetch(`${API_BASE_URL}auth/me`, {
             headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Accept': 'application/json'
-            }
+                'Accept': 'application/json',
+            },
+            credentials: 'include',
         });
+
+        console.log('🔐 Status da validação:', response.status);
 
         if (response.ok) {
             currentUser = await response.json();
@@ -160,9 +290,12 @@ async function validateTokenAndLoadUser() {
             localStorage.setItem('agendame_user', JSON.stringify(currentUser));
             localStorage.setItem('agendame_token', authToken);
 
+            // Atualizar interface
+            updateUserInterface();
+
             return true;
         } else {
-            console.warn('⚠️ Token inválido ou expirado');
+            console.warn('⚠️ Token inválido ou expirado:', response.status);
             clearAuth();
             return false;
         }
@@ -180,19 +313,48 @@ async function validateTokenAndLoadUser() {
 export function logoutUser() {
     console.log('🚪 Realizando logout...');
 
+    // Mostrar loading
+    showLogoutLoading(true);
+
     // Chamar API de logout
-    fetch('/auth/logout', {
+    fetch(`${API_BASE_URL}auth/logout`, {
         method: 'GET',
         credentials: 'include'
-    }).catch(error => {
+    })
+    .then(response => {
+        console.log('Logout API response:', response.status);
+
+        // Limpar dados locais independentemente da resposta
+        clearAuth();
+
+        // Redirecionar para login
+        setTimeout(() => {
+            window.location.href = '/login?success=Logout realizado com sucesso';
+        }, 500);
+    })
+    .catch(error => {
         console.error('Erro ao chamar API de logout:', error);
+
+        // Mesmo com erro, limpar localmente e redirecionar
+        clearAuth();
+        window.location.href = '/login?error=Erro durante logout';
+    })
+    .finally(() => {
+        showLogoutLoading(false);
     });
+}
 
-    // Limpar dados locais
-    clearAuth();
-
-    // Redirecionar para login
-    window.location.href = '/login';
+/**
+ * Mostra loading durante logout
+ */
+function showLogoutLoading(show) {
+    const logoutBtn = document.querySelector('[onclick*="logout"], [onclick*="Logout"]');
+    if (logoutBtn) {
+        logoutBtn.disabled = show;
+        logoutBtn.innerHTML = show
+            ? '<i class="fas fa-spinner fa-spin"></i> Saindo...'
+            : '<i class="fas fa-sign-out-alt"></i> Sair';
+    }
 }
 
 /**
@@ -202,18 +364,43 @@ function clearAuth() {
     console.log('🧹 Limpando dados de autenticação...');
 
     // Limpar cookies
-    document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i];
+        const eqPos = cookie.indexOf('=');
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+
+        // Remover cookies relacionados a autenticação
+        if (name.includes('token') || name.includes('auth') || name.includes('session')) {
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
+    }
 
     // Limpar localStorage
-    localStorage.removeItem('agendame_token');
-    localStorage.removeItem('agendame_user');
-    localStorage.removeItem('agendame_company');
-    localStorage.removeItem('agendame_slug');
-    localStorage.removeItem('business_name');
+    const itemsToRemove = [
+        'agendame_token',
+        'agendame_user',
+        'agendame_company',
+        'agendame_slug',
+        'business_name',
+        'is_trial',
+        'user_data',
+        'auth_token',
+        'refresh_token'
+    ];
+
+    itemsToRemove.forEach(item => {
+        localStorage.removeItem(item);
+    });
+
+    // Limpar sessionStorage
+    sessionStorage.clear();
 
     // Limpar variáveis
     currentUser = null;
     authToken = null;
+
+    console.log('✅ Dados de autenticação limpos');
 }
 
 /**
@@ -244,7 +431,8 @@ function saveToken(token) {
     console.log('💾 Salvando token...');
 
     // Salvar no cookie (para o middleware)
-    document.cookie = `access_token=${token}; path=/; max-age=3600; SameSite=Lax`;
+    const secure = IS_PRODUCTION;
+    document.cookie = `access_token=${token}; path=/; max-age=3600; ${secure ? 'Secure; ' : ''}SameSite=Lax`;
 
     // Salvar no localStorage (para o frontend)
     localStorage.setItem('agendame_token', token);
@@ -285,12 +473,19 @@ function showMessage(message, type = 'info') {
     const alertContainer = document.getElementById('alertContainer');
     if (!alertContainer) {
         console.warn('Container de alertas não encontrado');
-        alert(message); // Fallback
+        // Fallback: alert nativo
+        if (type === 'error') {
+            alert(`Erro: ${message}`);
+        } else if (type === 'success') {
+            alert(`Sucesso: ${message}`);
+        } else {
+            alert(message);
+        }
         return;
     }
 
-    // Remover alertas anteriores
-    const existingAlerts = alertContainer.querySelectorAll('.alert');
+    // Remover alertas anteriores do mesmo tipo
+    const existingAlerts = alertContainer.querySelectorAll(`.alert-${type}`);
     existingAlerts.forEach(alert => {
         if (alert.parentElement === alertContainer) {
             alert.remove();
@@ -301,9 +496,11 @@ function showMessage(message, type = 'info') {
     alertDiv.className = `alert alert-${type}`;
     alertDiv.innerHTML = `
         <div class="alert-content">
-            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+            <i class="fas fa-${getIconForType(type)}"></i>
             <span>${message}</span>
-            <button onclick="this.parentElement.parentElement.remove()">×</button>
+            <button onclick="this.parentElement.parentElement.remove()" class="alert-close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
     `;
 
@@ -315,6 +512,16 @@ function showMessage(message, type = 'info') {
             alertDiv.remove();
         }
     }, 5000);
+}
+
+function getIconForType(type) {
+    switch(type) {
+        case 'success': return 'check-circle';
+        case 'error': return 'exclamation-circle';
+        case 'warning': return 'exclamation-triangle';
+        case 'info': return 'info-circle';
+        default: return 'info-circle';
+    }
 }
 
 /**
@@ -341,6 +548,7 @@ function showLoading(show) {
  */
 export function protectRoute() {
     console.log('🛡️ Verificando proteção de rota...');
+    console.log('📍 Caminho atual:', window.location.pathname);
 
     // Se não estiver autenticado e não estiver na página de login
     if (!isAuthenticated() && !window.location.pathname.includes('/login')) {
@@ -401,6 +609,7 @@ export function initLoginForm() {
     const urlParams = new URLSearchParams(window.location.search);
     const trialEmail = urlParams.get('email');
     const error = urlParams.get('error');
+    const success = urlParams.get('success');
 
     if (trialEmail) {
         document.getElementById('email').value = trialEmail;
@@ -411,6 +620,10 @@ export function initLoginForm() {
         showMessage(decodeURIComponent(error), 'error');
     }
 
+    if (success) {
+        showMessage(decodeURIComponent(success), 'success');
+    }
+
     console.log('✅ Formulário de login inicializado');
 }
 
@@ -418,16 +631,28 @@ export function initLoginForm() {
  * Inicializa botão de logout
  */
 export function initLogoutButton() {
+    // Botão por ID
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopPropagation();
 
             if (confirm('Tem certeza que deseja sair?')) {
                 logoutUser();
             }
         });
     }
+
+    // Botões por classe
+    document.querySelectorAll('.logout-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Tem certeza que deseja sair?')) {
+                logoutUser();
+            }
+        });
+    });
 }
 
 /**
@@ -451,9 +676,43 @@ export function initPasswordToggle() {
     }
 }
 
+/**
+ * Testa a conexão com o servidor
+ */
+export async function testConnection() {
+    try {
+        console.log('📡 Testando conexão com o servidor...');
+        const response = await fetch(`${API_BASE_URL}health`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Conexão OK:', data);
+            return true;
+        } else {
+            console.warn('⚠️ Servidor respondeu mas com erro:', response.status);
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Não foi possível conectar ao servidor:', error);
+        return false;
+    }
+}
+
 // Inicializar quando o DOM carregar
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 DOM carregado, inicializando auth...');
+    console.log('🌐 URL atual:', window.location.href);
+
+    // Testar conexão primeiro
+    testConnection().then(isConnected => {
+        if (!isConnected) {
+            console.warn('⚠️ Cuidado: Problemas de conexão detectados');
+            showMessage('Problemas de conexão com o servidor. Verifique sua internet.', 'warning');
+        }
+    });
 
     // Inicializar funcionalidades do login
     if (window.location.pathname.includes('/login')) {
@@ -473,6 +732,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 console.log('✅ Usuário autenticado, permitindo acesso');
             }
+        }).catch(error => {
+            console.error('❌ Erro na inicialização da autenticação:', error);
+            protectRoute();
         });
     }
 });
@@ -484,5 +746,6 @@ window.AgendameAuth = {
     isAuthenticated,
     getUser,
     getToken,
-    protectRoute
+    protectRoute,
+    testConnection
 };

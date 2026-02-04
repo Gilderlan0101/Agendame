@@ -2265,3 +2265,69 @@ input:focus + .switch-slider {
         break-inside: avoid;
     }
 }
+
+
+/* Estilos para o modal de inatividade */
+.inactivity-warning {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.warning-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.warning-content h3 {
+    color: #f59e0b;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.warning-content p {
+    margin-bottom: 1rem;
+    color: #6b7280;
+}
+
+#countdown {
+    font-weight: bold;
+    color: #dc2626;
+    font-size: 1.2em;
+}
+
+.warning-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    justify-content: center;
+}
+
+.warning-actions .btn {
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+}
