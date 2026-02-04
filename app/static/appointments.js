@@ -96,9 +96,10 @@ export async function loadAppointments(filters = {}) {
         const response = await fetch(url, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${appState.token}`,
+                'Authorization': `Bearer ${appState.token || sessionStorage.getItem('agendame_token')}`,
                 'Accept': 'application/json'
-            }
+            },
+            credentials: 'include'
         });
 
         if (response.ok) {
@@ -486,9 +487,10 @@ export async function editAppointment(appointmentId) {
         const response = await fetch('/company/services', {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${appState.token}`,
+                'Authorization': `Bearer ${appState.token} || ${sessionStorage.getItem('agendame_token')}`,
                 'Accept': 'application/json'
-            }
+            },
+            credentials: 'include'
         });
 
         if (response.ok) {

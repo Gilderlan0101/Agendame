@@ -151,3 +151,65 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
             url='/login?error=Erro interno no servidor',
             status_code=status.HTTP_303_SEE_OTHER,
         )
+
+
+# Adicione esta função no mesmo arquivo onde está login_user
+
+@router_login.get('/logout')
+async def logout_user(request: Request):
+    """Rota para logout do usuário."""
+
+    # Verifica se há um usuário logado
+    current_user = await get_current_user(request)
+
+    # Cria resposta de redirecionamento
+    response = RedirectResponse(
+        url='/login?success=Logout realizado com sucesso',
+        status_code=status.HTTP_303_SEE_OTHER
+    )
+
+    # Remove o cookie de autenticação
+    response.delete_cookie(
+        key='access_token',
+        httponly=True,
+        secure=True,  # True em produção
+        samesite='lax'
+    )
+
+    # Remove outros cookies relacionados à autenticação se existirem
+    response.delete_cookie('refresh_token')
+    response.delete_cookie('user_id')
+
+    # Adiciona headers para evitar cache
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+
+    print(f'👋 Usuário {current_user.email if current_user else "desconhecido"} fez logout')
+
+    return response
+
+
+# Rota de logout via POST (opcional, para APIs)
+@router_login.post('/logout')
+async def logout_user_api(request: Request):
+    """Rota de logout para APIs (POST)."""
+
+    current_user = await get_current_user(request)
+
+    response = JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            'message': 'Logout realizado com sucesso',
+            'user': current_user.email if current_user else None
+        }
+    )
+
+    # Remove cookies
+    response.delete_cookie(
+        key='access_token',
+        httponly=True,
+        secure=True,
+        samesite='lax'
+    )
+
+    return response
