@@ -1221,7 +1221,7 @@
             console.log('📡 Enviando ping para manter servidor ativo...');
 
             // Usar diferentes endpoints para evitar cache
-            const endpoints = ['/health', '/', '/api/ping', '/auth/ping'];
+            const endpoints = ['/health', '/', '/keepalive', '/ping'];
             const randomEndpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
 
             fetch(`${SERVER_URL}${randomEndpoint}`, {
