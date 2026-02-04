@@ -63,7 +63,7 @@ export async function loadCompanyData() {
             type: userData.business_type || userData.type || '',
             phone: userData.phone || '',
             whatsapp: userData.whatsapp || userData.phone || '',
-            slug: userData.business_slug || userData.slug || '',
+            slug: userData.business_slug || userData.slug || userData.slog || '',
             url: (userData.business_slug || userData.slug) ?
                 `${window.location.origin}/agendame/${userData.business_slug || userData.slug}` :
                 'URL não configurada'
@@ -154,6 +154,7 @@ function updateHeaderInfo(userData) {
     const userName = document.getElementById('userName');
     const userBusiness = document.getElementById('userBusiness');
     const userGreeting = document.getElementById('userGreeting');
+    const userCompanyType = document.getElementById('companyType');
 
     if (userName) {
         userName.textContent = userData.name || userData.email || 'Usuário';
@@ -166,6 +167,10 @@ function updateHeaderInfo(userData) {
     if (userGreeting) {
         const firstName = (userData.name || '').split(' ')[0] || 'Usuário';
         userGreeting.textContent = firstName;
+    }
+
+    if (userCompanyType) {
+        userCompanyType.textContent = userData.business_type || userData.slug || 'N/A';
     }
 }
 

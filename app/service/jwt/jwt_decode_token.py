@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
@@ -48,7 +48,10 @@ class DecodeToken:
             )
 
         # Verificar expiração
-        if self.data.exp and datetime.fromtimestamp(self.data.exp) < datetime.now():
+        if (
+            self.data.exp
+            and datetime.fromtimestamp(self.data.exp) < datetime.now()
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail='Token expirado. Faça login novamente',

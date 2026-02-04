@@ -8,10 +8,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 
 from app.schemas.auth.schemas_login import LoginResponse
-from app.service.auth.auth_login import (
-    checking_account,
-    checking_account_trial,
-)
+from app.service.auth.auth_login import (checking_account,
+                                         checking_account_trial)
 from app.service.auth.auth_register import SignupFreeTrial
 from app.service.jwt.depends import SystemUser, get_current_user
 
@@ -23,6 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 template_dir = BASE_DIR / 'app' / 'templates'
 templates = Jinja2Templates(directory=str(template_dir))
 
+
 @router_login.get('/me')
 async def get_current_user_info(
     current_user: SystemUser = Depends(get_current_user),
@@ -31,7 +30,7 @@ async def get_current_user_info(
     return current_user
 
 
-@router.get('/login', response_class=HTMLResponse, name="login_page")
+@router.get('/login', response_class=HTMLResponse, name='login_page')
 async def get_login_page(
     request: Request,
     error: Optional[str] = None,
@@ -39,7 +38,9 @@ async def get_login_page(
     next_url: Optional[str] = None,
 ):
     """Exibe a página HTML de login."""
-    print(f"DEBUG LOGIN PAGE: error={error}, success={success}, next={next_url}")
+    print(
+        f'DEBUG LOGIN PAGE: error={error}, success={success}, next={next_url}'
+    )
 
     return templates.TemplateResponse(
         'login.html',
@@ -47,8 +48,8 @@ async def get_login_page(
             'request': request,
             'error': error,
             'success': success,
-            'next_url': next_url or "/agendame/dashboard"
-        }
+            'next_url': next_url or '/agendame/dashboard',
+        },
     )
 
 
@@ -86,7 +87,7 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
                 'username': form_data.username,
                 'email': form_data.username,
                 'password': form_data.password,
-            }
+            },
         )
 
         # Verificar em tabelas de usuarios trial 7 dias
@@ -97,7 +98,7 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
                     'username': form_data.username,
                     'email': form_data.username,
                     'password': form_data.password,
-                }
+                },
             )
 
         if verify_auth is None:
@@ -110,19 +111,19 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
         # Ajuste conforme sua implementação de token
         response = JSONResponse(
             content={
-                "access_token": verify_auth.get("access_token"),
-                "token_type": "bearer"
+                'access_token': verify_auth.get('access_token'),
+                'token_type': 'bearer',
             }
         )
 
         # Define o cookie de autenticação
         response.set_cookie(
-            key="access_token",
-            value=verify_auth.get("access_token"),
+            key='access_token',
+            value=verify_auth.get('access_token'),
             httponly=True,
             max_age=3600,  # 1 hora
             secure=False,  # True em produção com HTTPS
-            samesite="lax"
+            samesite='lax',
         )
 
         return response
@@ -140,11 +141,10 @@ async def logout_user():
     """Rota para logout do usuário."""
 
     response = RedirectResponse(
-        url="/login?success=logout",
-        status_code=status.HTTP_303_SEE_OTHER
+        url='/login?success=logout', status_code=status.HTTP_303_SEE_OTHER
     )
 
     # Remove o cookie de autenticação
-    response.delete_cookie(key="access_token")
+    response.delete_cookie(key='access_token')
 
     return response

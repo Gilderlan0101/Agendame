@@ -1,17 +1,18 @@
 from typing import Any, Dict, Optional
-from fastapi import HTTPException, status, Request
+
+from fastapi import HTTPException, Request, status
 from fastapi.responses import RedirectResponse
+
 from app.models.trial import TrialAccount
 from app.models.user import User
 from app.schemas.auth.schemas_login import LoginResponse
-from app.service.jwt.auth import (
-    create_access_token,
-    create_refresh_token,
-    verify_password,
-)
+from app.service.jwt.auth import (create_access_token, create_refresh_token,
+                                  verify_password)
 
 
-async def checking_account(request: Optional[Request] = None, target: Dict[str, Any] = None):
+async def checking_account(
+    request: Optional[Request] = None, target: Dict[str, Any] = None
+):
     """Versão que funciona com ou sem Request"""
     try:
         if target is None:
@@ -44,19 +45,18 @@ async def checking_account(request: Optional[Request] = None, target: Dict[str, 
 
         # Se tiver um Request, cria resposta com redirecionamento
         if request:
-            next_url = request.query_params.get("next", "/agendame/dashboard")
+            next_url = request.query_params.get('next', '/agendame/dashboard')
             response = RedirectResponse(
-                url=next_url,
-                status_code=status.HTTP_303_SEE_OTHER
+                url=next_url, status_code=status.HTTP_303_SEE_OTHER
             )
 
             response.set_cookie(
-                key="access_token",
+                key='access_token',
                 value=access_token,
                 httponly=True,
                 max_age=3600,
                 secure=False,
-                samesite="lax"
+                samesite='lax',
             )
         else:
             # Se não tiver Request, cria uma resposta vazia
@@ -64,23 +64,23 @@ async def checking_account(request: Optional[Request] = None, target: Dict[str, 
 
         # Retorna LoginResponse
         return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": 'bearer',
-            "user_id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "business_name": user.business_name,
-            "slog": user.business_slug,
-            "response": response
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'token_type': 'bearer',
+            'user_id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'business_name': user.business_name,
+            'slog': user.business_slug,
+            'response': response,
         }
 
     except HTTPException as e:
         # Se tiver Request, retorna RedirectResponse
         if request:
             return RedirectResponse(
-                url=f"/login?error={e.detail}",
-                status_code=status.HTTP_303_SEE_OTHER
+                url=f'/login?error={e.detail}',
+                status_code=status.HTTP_303_SEE_OTHER,
             )
         # Se não tiver Request, levanta a exceção
         raise
@@ -93,7 +93,9 @@ async def checking_account(request: Optional[Request] = None, target: Dict[str, 
         )
 
 
-async def checking_account_trial(request: Optional[Request] = None, target: Dict[str, Any] = None):
+async def checking_account_trial(
+    request: Optional[Request] = None, target: Dict[str, Any] = None
+):
     """Versão que funciona com ou sem Request para trial"""
     try:
         if target is None:
@@ -122,43 +124,40 @@ async def checking_account_trial(request: Optional[Request] = None, target: Dict
 
         # Se tiver um Request, cria resposta com redirecionamento
         if request:
-            next_url = request.query_params.get("next", "/agendame/dashboard")
+            next_url = request.query_params.get('next', '/agendame/dashboard')
             response = RedirectResponse(
-                url=next_url,
-                status_code=status.HTTP_303_SEE_OTHER
+                url=next_url, status_code=status.HTTP_303_SEE_OTHER
             )
 
             response.set_cookie(
-                key="access_token",
+                key='access_token',
                 value=access_token,
                 httponly=True,
                 max_age=3600,
                 secure=False,
-                samesite="lax"
+                samesite='lax',
             )
         else:
             response = None
 
         # Retorna LoginResponse
         return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": 'bearer',
-            "user_id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "business_name": user.business_name,
-            "slog": user.business_slug,
-            "response": response
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'token_type': 'bearer',
+            'user_id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'business_name': user.business_name,
+            'slog': user.business_slug,
+            'response': response,
         }
-
-
 
     except HTTPException as e:
         if request:
             return RedirectResponse(
-                url=f"/login?error={e.detail}",
-                status_code=status.HTTP_303_SEE_OTHER
+                url=f'/login?error={e.detail}',
+                status_code=status.HTTP_303_SEE_OTHER,
             )
         raise
 

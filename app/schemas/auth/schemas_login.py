@@ -1,9 +1,11 @@
+from typing import Any, Optional
+
 from pydantic import BaseModel
-from typing import Optional, Any
+
 
 class LoginResponse(BaseModel):
     access_token: str
-    token_type: str = "bearer"
+    token_type: str = 'bearer'
     user_id: int
     username: str
     email: str
@@ -12,4 +14,6 @@ class LoginResponse(BaseModel):
     response: Optional[Any] = None  # Não tente serializar RedirectResponse
 
     class Config:
-        arbitrary_types_allowed = True # Pode conter cookies ou outros dados adicionais
+        arbitrary_types_allowed = (
+            True  # Pode conter cookies ou outros dados adicionais
+        )

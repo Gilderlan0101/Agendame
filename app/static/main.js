@@ -1,532 +1,766 @@
-// main.js - Arquivo principal otimizado para performance
+// main.js - Arquivo principal otimizado para performance máxima
 
-import {
-    getUser,
-    initAuth,
-    isAuthenticated,
-    protectRoute
-} from './auth.js';
+// ================================
+// IMPORTAÇÕES OTIMIZADAS (lazy loading)
+// ================================
 
-import {
-    loadAppointments,
-} from './appointments.js';
+// Importações imediatas (essenciais)
 import { appState } from './appState.js';
-import { logoutBtn } from './domElements.js';
-import { openNewAppointmentModal, saveNewAppointment } from './modals.js';
-import {
-    loadServices,
-    openNewServiceModal,
-    saveNewService
-} from './services.js';
 import { closeModal, debounce, setLoading, showAlert } from './utils.js';
 
-import { loadClients } from './clients.js';
-
-// IMPORTAR FUNÇÕES DO HOME.JS
-import {
-    initDashboard,
-    refreshDashboard,
-    updateAllCounts
-} from './home.js';
-
-import { initCompanyTab, loadCompanyData } from './company.js';
+// Lazy imports para módulos pesados
+let authModule = null;
+let homeModule = null;
+let appointmentsModule = null;
+let servicesModule = null;
+let clientsModule = null;
+let companyModule = null;
 
 // ================================
 // CONSTANTES E VARIÁVEIS GLOBAIS
 // ================================
+
 let isInitialized = false;
 let eventListenersSetup = false;
+let loadControllers = {};
+const INITIAL_LOAD_DELAY = 50; // ms para initial load
+
+// Observer para lazy loading de tabs
+let tabObserver = null;
 
 // ================================
-// INICIALIZAÇÃO OTIMIZADA
+// INICIALIZAÇÃO ULTRA OTIMIZADA
 // ================================
 
 /**
- * Inicializa a aplicação após autenticação (Otimizada)
+ * Inicializa a aplicação com carregamento prioritário
  */
 async function initializeApp() {
-    if (isInitialized) {
-        console.log('⚠️ Aplicação já inicializada');
+    if (isInitialized) return;
+
+    console.time('🚀 Inicialização completa');
+
+    // Verificar autenticação de forma não-bloqueante
+    const auth = await loadAuthModule();
+    if (!auth.isAuthenticated()) {
+        auth.protectRoute();
         return;
     }
 
-    console.time('🚀 Inicialização da aplicação');
+    // Configurar dados básicos do usuário
+    const user = auth.getUser();
+    appState.user = user;
+    appState.token = localStorage.getItem('agendame_token');
 
-    // Verificar autenticação
-    if (!isAuthenticated()) {
-        console.log('❌ Usuário não autenticado');
-        protectRoute();
-        return;
+    // Configurar listeners otimizados
+    setupOptimizedEventListeners();
+
+    // Carregar dados de forma incremental
+    await loadCriticalData();
+
+    // Marcar como inicializado
+    isInitialized = true;
+
+    console.timeEnd('🚀 Inicialização completa');
+}
+
+/**
+ * Carrega módulo de auth sob demanda
+ */
+async function loadAuthModule() {
+    if (!authModule) {
+        authModule = await import('./auth.js');
     }
+    return authModule;
+}
+
+/**
+ * Carrega dados críticos (prioridade máxima)
+ */
+async function loadCriticalData() {
+    // Mostrar apenas loading se necessário (evitar flicker)
+    const shouldShowLoading = document.querySelector('#loadingOverlay')?.style.display === 'none';
+    if (shouldShowLoading) setLoading(true);
 
     try {
-        // Carregar dados do usuário (sem bloco try-catch interno)
-        const user = getUser();
-        console.log('👤 Usuário autenticado:', user.email);
+        // 1. Dashboard (prioridade máxima)
+        await loadAndInitDashboard();
 
-        // Atualizar appState uma única vez
-        appState.user = user;
-        appState.token = localStorage.getItem('agendame_token');
+        // 2. Dados essenciais em paralelo (mas com limite)
+        await Promise.race([
+            loadEssentialData(),
+            new Promise(resolve => setTimeout(resolve, 3000)) // Timeout de segurança
+        ]);
 
-        // Configurar listeners apenas uma vez
-        if (!eventListenersSetup) {
-            setupEventListeners();
-            eventListenersSetup = true;
-        }
+        // 3. Dados secundários (lazy)
+        setTimeout(() => {
+            loadSecondaryData().catch(() => {});
+        }, 100);
 
-        // Carregar dados iniciais de forma otimizada
-        await loadInitialData();
-
-        // Marcar como inicializado
-        isInitialized = true;
-
-        console.timeEnd('🚀 Inicialização da aplicação');
-
-    } catch (error) {
-        console.error('🚨 Erro crítico ao inicializar aplicação:', error);
-        showAlert('❌ Erro ao carregar dados da aplicação', 'error');
+    } finally {
+        if (shouldShowLoading) setLoading(false);
     }
 }
 
 /**
- * Carrega dados iniciais de forma otimizada
+ * Carrega e inicializa dashboard
  */
-async function loadInitialData() {
-    console.time('📊 Carregamento de dados iniciais');
-
-    // Verificar se é conta trial
-    if (appState.user?.is_trial) {
-        requestIdleCallback(() => showTrialBanner());
+async function loadAndInitDashboard() {
+    if (!homeModule) {
+        homeModule = await import('./home.js');
     }
 
-    // Carregar dados em paralelo, mas com controle
-    const promises = [];
-
-    // Dashboard primeiro (mais importante)
-    promises.push(new Promise(resolve => {
-        requestAnimationFrame(() => {
-            initDashboard();
-            resolve();
-        });
-    }));
-
-    // Dados principais em segundo plano
-    promises.push(
-        loadServices().catch(e => console.warn('Erro ao carregar serviços:', e))
-    );
-    promises.push(
-        loadAppointments().catch(e => console.warn('Erro ao carregar agendamentos:', e))
-    );
-    promises.push(
-        loadClients().catch(e => console.warn('Erro ao carregar clientes:', e))
-    );
-
-    // Aguardar todos em paralelo
-    await Promise.all(promises);
-
-    // Atualizar UI após carregamento
+    // Inicializar dashboard de forma não-bloqueante
     requestAnimationFrame(() => {
-        updateAllCounts();
-        refreshDashboard();
+        homeModule.initDashboard();
+
+        // Atualizar contadores após microtask
+        Promise.resolve().then(() => {
+            if (homeModule.updateAllCounts) {
+                homeModule.updateAllCounts();
+            }
+        });
     });
-
-    // Mostrar dashboard como tab padrão
-    setTimeout(() => switchTab('dashboard'), 100);
-
-    console.timeEnd('📊 Carregamento de dados iniciais');
-}
-
-// ================================
-// CONFIGURAÇÃO DE EVENTOS (OTIMIZADA)
-// ================================
-
-/**
- * Configura event listeners com debounce e delegación
- */
-function setupEventListeners() {
-    console.time('🎯 Configuração de event listeners');
-
-    // Usar delegación de eventos para elementos dinâmicos
-    document.addEventListener('click', handleGlobalClick);
-    document.addEventListener('change', handleGlobalChange);
-    document.addEventListener('submit', handleGlobalSubmit);
-
-    // Configurar botão de logout
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (confirm('🚪 Deseja sair da sua conta?')) {
-                window.AgendameAuth.logout();
-            }
-        });
-    }
-
-    // Tabs - delegación
-    const tabsContainer = document.querySelector('.tabs');
-    if (tabsContainer) {
-        tabsContainer.addEventListener('click', function(e) {
-            const tabBtn = e.target.closest('.tab-btn');
-            if (tabBtn) {
-                const tabId = tabBtn.getAttribute('data-tab');
-                switchTab(tabId);
-            }
-        });
-    }
-
-    // Botão de upgrade trial
-    setupTrialUpgradeButton();
-
-    console.timeEnd('🎯 Configuração de event listeners');
 }
 
 /**
- * Manipulador global de clicks (delegación)
+ * Carrega dados essenciais com limite de concorrência
  */
-function handleGlobalClick(e) {
+async function loadEssentialData() {
+    // Limitar a 2 requisições simultâneas
+    const queue = [];
+
+    // Serviços (alto impacto no UI)
+    queue.push(loadServicesData());
+
+    // Agendamentos de hoje (crítico)
+    queue.push(loadTodaysAppointments());
+
+    // Executar com concorrência controlada
+    await executeWithConcurrency(queue, 2);
+}
+
+/**
+ * Carrega dados secundários (baixa prioridade)
+ */
+async function loadSecondaryData() {
+    // Usar requestIdleCallback para baixa prioridade
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(async () => {
+            await Promise.allSettled([
+                loadAllAppointments(),
+                loadAllClients(),
+                loadCompanyDataLazy()
+            ]);
+        });
+    } else {
+        // Fallback para navegadores antigos
+        setTimeout(async () => {
+            await Promise.allSettled([
+                loadAllAppointments(),
+                loadAllClients()
+            ]);
+        }, 1000);
+    }
+}
+
+/**
+ * Executa promises com limite de concorrência
+ */
+async function executeWithConcurrency(promises, maxConcurrent = 3) {
+    const results = [];
+
+    for (let i = 0; i < promises.length; i += maxConcurrent) {
+        const batch = promises.slice(i, i + maxConcurrent);
+        const batchResults = await Promise.allSettled(batch);
+        results.push(...batchResults);
+
+        // Pequena pausa entre batches para não sobrecarregar
+        if (i + maxConcurrent < promises.length) {
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
+    }
+
+    return results;
+}
+
+// ================================
+// CARREGAMENTO DE DADOS POR MÓDULO
+// ================================
+
+/**
+ * Carrega serviços com cache
+ */
+async function loadServicesData() {
+    if (!servicesModule) {
+        servicesModule = await import('./services.js');
+    }
+
+    // Verificar cache
+    if (appState.services && appState.services.length > 0) {
+        return appState.services;
+    }
+
+    return servicesModule.loadServices();
+}
+
+/**
+ * Carrega apenas agendamentos de hoje
+ */
+async function loadTodaysAppointments() {
+    if (!appointmentsModule) {
+        appointmentsModule = await import('./appointments.js');
+    }
+
+    // Carregar apenas hoje por padrão
+    const today = new Date().toISOString().split('T')[0];
+    return appointmentsModule.loadAppointments({ date: today });
+}
+
+/**
+ * Carrega todos os agendamentos
+ */
+async function loadAllAppointments() {
+    if (!appointmentsModule) {
+        appointmentsModule = await import('./appointments.js');
+    }
+    return appointmentsModule.loadAppointments();
+}
+
+/**
+ * Carrega todos os clientes
+ */
+async function loadAllClients() {
+    if (!clientsModule) {
+        clientsModule = await import('./clients.js');
+    }
+    return clientsModule.loadClients();
+}
+
+/**
+ * Carrega dados da empresa lazy
+ */
+async function loadCompanyDataLazy() {
+    if (!companyModule) {
+        companyModule = await import('./company.js');
+    }
+    return companyModule.loadCompanyData();
+}
+
+// ================================
+// CONFIGURAÇÃO DE EVENTOS OTIMIZADA
+// ================================
+
+/**
+ * Configura event listeners ultra otimizados
+ */
+function setupOptimizedEventListeners() {
+    if (eventListenersSetup) return;
+
+    // Usar event delegation para tudo
+    document.addEventListener('click', handleDocumentClick, { passive: true });
+    document.addEventListener('change', handleDocumentChange, { passive: true });
+    document.addEventListener('submit', handleDocumentSubmit, { passive: true });
+
+    // Configurar Intersection Observer para lazy loading de tabs
+    setupTabObserver();
+
+    eventListenersSetup = true;
+}
+
+/**
+ * Observer para carregar tabs sob demanda
+ */
+function setupTabObserver() {
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const tabId = entry.target.id.replace('Tab', '');
+                loadTabOnDemand(tabId);
+                tabObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.1 });
+
+    tabContents.forEach(tab => {
+        if (!tab.classList.contains('active')) {
+            tabObserver.observe(tab);
+        }
+    });
+}
+
+/**
+ * Carrega dados da tab apenas quando necessário
+ */
+async function loadTabOnDemand(tabId) {
+    // Cancelar load anterior se existir
+    if (loadControllers[tabId]) {
+        loadControllers[tabId].abort();
+    }
+
+    // Criar novo AbortController para esta tab
+    const controller = new AbortController();
+    loadControllers[tabId] = controller;
+
+    try {
+        switch(tabId) {
+            case 'appointments':
+                const mod = await import('./appointments.js');
+                await mod.loadAppointments();
+                break;
+
+            case 'services':
+                // Já carregado durante inicialização
+                break;
+
+            case 'clients':
+                const clientsMod = await import('./clients.js');
+                await clientsMod.loadClients();
+                break;
+
+            case 'company':
+                const companyMod = await import('./company.js');
+                await companyMod.loadCompanyData();
+                if (companyMod.initCompanyTab) {
+                    companyMod.initCompanyTab();
+                }
+                break;
+        }
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            console.warn(`Erro ao carregar tab ${tabId}:`, error);
+        }
+    } finally {
+        if (loadControllers[tabId] === controller) {
+            delete loadControllers[tabId];
+        }
+    }
+}
+
+/**
+ * Manipulador de clicks otimizado
+ */
+function handleDocumentClick(e) {
     const target = e.target;
 
-    // Fechar modal ao clicar fora
+    // Tabs
+    if (target.closest('.tab-btn')) {
+        const tabBtn = target.closest('.tab-btn');
+        const tabId = tabBtn?.dataset?.tab;
+        if (tabId) {
+            e.preventDefault();
+            switchTabOptimized(tabId);
+        }
+        return;
+    }
+
+    // Fechar modal
     if (target.classList.contains('modal')) {
         target.classList.remove('show');
         return;
     }
 
-    // Fechar dropdown ao clicar fora
-    const dropdown = target.closest('.dropdown');
-    if (!dropdown && document.querySelector('.dropdown-menu.show')) {
-        document.querySelector('.dropdown-menu.show').classList.remove('show');
+    // Botão de logout
+    if (target.closest('#logoutBtn') || target.closest('[onclick*="logout"]')) {
+        e.preventDefault();
+        handleLogout();
+        return;
+    }
+
+    // Botões de ação com data attributes
+    if (target.dataset?.action) {
+        handleDataAction(target);
+        return;
     }
 }
 
 /**
- * Manipulador global de mudanças (delegación)
+ * Manipulador de mudanças otimizado
  */
-function handleGlobalChange(e) {
+function handleDocumentChange(e) {
     const target = e.target;
 
-    // Filtro de data de agendamentos
+    // Filtro de data
     if (target.id === 'appointmentDateFilter') {
         debouncedLoadAppointments({ date: target.value });
     }
 }
 
 /**
- * Manipulador global de submits (delegación)
+ * Manipulador de submits otimizado
  */
-function handleGlobalSubmit(e) {
-    const target = e.target;
+function handleDocumentSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
 
-    // Formulário de novo serviço
-    if (target.id === 'newServiceForm') {
-        e.preventDefault();
-        saveNewService();
-        return;
-    }
-
-    // Formulário de editar serviço
-    if (target.id === 'editServiceForm') {
-        e.preventDefault();
-        if (window.saveEditedService) {
-            window.saveEditedService();
-        }
-        return;
-    }
-
-    // Formulário de novo agendamento
-    if (target.id === 'newAppointmentForm') {
-        e.preventDefault();
-        saveNewAppointment();
-        return;
+    switch(form.id) {
+        case 'newServiceForm':
+            handleNewServiceSubmit(form);
+            break;
+        case 'newAppointmentForm':
+            handleNewAppointmentSubmit(form);
+            break;
     }
 }
 
-// Debounce para carregar agendamentos
-const debouncedLoadAppointments = debounce(loadAppointments, 300);
+/**
+ * Manipulador de ações via data attributes
+ */
+async function handleDataAction(element) {
+    const action = element.dataset.action;
+    const id = element.dataset.id;
+
+    switch(action) {
+        case 'edit-service':
+            if (!servicesModule) {
+                servicesModule = await import('./services.js');
+            }
+            servicesModule.editService(id);
+            break;
+
+        case 'delete-service':
+            confirmDelete('service', id);
+            break;
+
+        case 'view-appointment':
+            if (!appointmentsModule) {
+                appointmentsModule = await import('./appointments.js');
+            }
+            appointmentsModule.viewAppointmentDetails(id);
+            break;
+    }
+}
 
 // ================================
-// FUNÇÕES DE INTERFACE (OTIMIZADAS)
+// FUNÇÕES DE INTERFACE OTIMIZADAS
 // ================================
 
 /**
- * Alterna entre tabs de forma otimizada
+ * Alterna entre tabs com performance
  */
-function switchTab(tabId) {
+function switchTabOptimized(tabId) {
     if (!tabId) return;
 
-    console.time(`🔄 Mudança para tab: ${tabId}`);
+    // Atualizar UI de forma otimizada
+    requestAnimationFrame(() => {
+        // Botões
+        document.querySelectorAll('.tab-btn').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.tab === tabId);
+        });
 
-    // Atualizar botões com dataset para performance
-    document.querySelectorAll('.tab-btn').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.tab === tabId);
+        // Conteúdo
+        document.querySelectorAll('.tab-content').forEach(content => {
+            const isActive = content.id === `${tabId}Tab`;
+            content.classList.toggle('active', isActive);
+
+            // Parar observer para tab ativa
+            if (isActive && tabObserver) {
+                tabObserver.unobserve(content);
+            }
+        });
     });
 
-    // Atualizar conteúdo com dataset
-    document.querySelectorAll('.tab-content').forEach(content => {
-        const contentId = content.id.replace('Tab', '');
-        content.classList.toggle('active', contentId === tabId);
-    });
-
-    // Carregar dados específicos da tab de forma lazy
-    loadTabData(tabId);
-
-    console.timeEnd(`🔄 Mudança para tab: ${tabId}`);
+    // Carregar dados da tab (deferido)
+    setTimeout(() => {
+        loadTabOnDemand(tabId).catch(() => {});
+    }, 50);
 }
 
 /**
- * Carrega dados específicos da tab (lazy loading)
+ * Handler para logout
  */
-async function loadTabData(tabId) {
-    switch(tabId) {
-        case 'appointments':
-            await loadAppointments();
-            break;
-        case 'services':
-            await loadServices();
-            break;
-        case 'clients':
-            await loadClients();
-            break;
-        case 'company':
-            // Carregar dados da empresa apenas quando acessada
-            await loadCompanyData();
-            initCompanyTab();
-            break;
-        default:
-            // Dashboard não precisa carregar dados extras
-            break;
+async function handleLogout() {
+    if (!confirm('🚪 Deseja sair da sua conta?')) return;
+
+    const auth = await loadAuthModule();
+    auth.logout();
+}
+
+/**
+ * Handler para novo serviço
+ */
+async function handleNewServiceSubmit(form) {
+    if (!servicesModule) {
+        servicesModule = await import('./services.js');
+    }
+
+    const formData = new FormData(form);
+    const serviceData = Object.fromEntries(formData.entries());
+
+    try {
+        await servicesModule.saveNewService(serviceData);
+        form.reset();
+        closeModal('newServiceModal');
+        showAlert('✅ Serviço criado com sucesso!', 'success');
+    } catch (error) {
+        showAlert('❌ Erro ao criar serviço', 'error');
     }
 }
 
 /**
- * Mostra banner de trial (carregamento lazy)
+ * Handler para novo agendamento
  */
-function showTrialBanner() {
-    if (document.getElementById('trialBanner')) return;
+async function handleNewAppointmentSubmit(form) {
+    if (!appointmentsModule) {
+        appointmentsModule = await import('./appointments.js');
+    }
 
-    const daysRemaining = appState.user?.days_remaining || 7;
+    const formData = new FormData(form);
+    const appointmentData = Object.fromEntries(formData.entries());
 
-    // Usar template literal otimizado
-    const bannerHTML = `
-        <div class="trial-banner" id="trialBanner">
-            <div class="container">
-                <div class="trial-content">
-                    <i class="fas fa-gem"></i>
-                    <div class="trial-text">
-                        <strong>CONTA PREMIUM TRIAL</strong>
-                        <span id="trialDays">${daysRemaining} ${daysRemaining === 1 ? 'DIA' : 'DIAS'} RESTANTES</span>
-                    </div>
-                    <button class="btn btn-sm btn-upgrade" onclick="showTrialUpgradeModal()">
-                        <i class="fas fa-bolt"></i> Fazer Upgrade
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // Inserir após o header
-    const header = document.querySelector('header');
-    if (header) {
-        header.insertAdjacentHTML('afterend', bannerHTML);
+    try {
+        await appointmentsModule.saveNewAppointment(appointmentData);
+        form.reset();
+        closeModal('newAppointmentModal');
+        showAlert('✅ Agendamento criado com sucesso!', 'success');
+    } catch (error) {
+        showAlert('❌ Erro ao criar agendamento', 'error');
     }
 }
 
+// ================================
+// FUNÇÕES GLOBAIS OTIMIZADAS
+// ================================
+
 /**
- * Configura botão de upgrade do trial
+ * Atualiza dados com debounce e cache
  */
-function setupTrialUpgradeButton() {
-    // Usar delegación em vez de event listener individual
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.btn-upgrade')) {
-            e.preventDefault();
-            showTrialUpgradeModal();
+const debouncedRefreshData = debounce(async function refreshData() {
+    console.time('🔄 Refresh otimizado');
+
+    // Mostrar feedback mínimo
+    const alertShown = showAlert('🔄 Atualizando...', 'info', 2000);
+
+    try {
+        // Atualizar apenas dados visíveis
+        const activeTab = document.querySelector('.tab-content.active')?.id.replace('Tab', '');
+
+        const updates = [];
+
+        // Dashboard sempre
+        if (homeModule?.refreshDashboard) {
+            updates.push(homeModule.refreshDashboard());
         }
-    });
+
+        // Dados da tab ativa
+        switch(activeTab) {
+            case 'appointments':
+                updates.push(loadAllAppointments());
+                break;
+            case 'services':
+                updates.push(loadServicesData());
+                break;
+            case 'clients':
+                updates.push(loadAllClients());
+                break;
+        }
+
+        await Promise.allSettled(updates);
+
+        if (!alertShown) {
+            showAlert('✅ Dados atualizados!', 'success', 3000);
+        }
+
+    } catch (error) {
+        showAlert('⚠️ Erro ao atualizar dados', 'warning', 3000);
+    }
+
+    console.timeEnd('🔄 Refresh otimizado');
+}, 500);
+
+/**
+ * Mostra modal de novo serviço (lazy)
+ */
+async function openNewServiceModal() {
+    if (!servicesModule) {
+        servicesModule = await import('./services.js');
+    }
+
+    // Carregar seletor de serviços apenas quando necessário
+    const serviceSelect = document.querySelector('#newServiceForm select');
+    if (serviceSelect && serviceSelect.options.length <= 1) {
+        await loadServicesData();
+    }
+
+    servicesModule.openNewServiceModal();
 }
 
 /**
- * Mostra modal de upgrade do trial
+ * Mostra modal de novo agendamento (lazy)
  */
-function showTrialUpgradeModal() {
-    const modal = document.getElementById('trialUpgradeModal');
-    if (modal) {
-        modal.classList.add('show');
+async function openNewAppointmentModal() {
+    if (!appointmentsModule) {
+        appointmentsModule = await import('./appointments.js');
+    }
+
+    // Carregar serviços para o select
+    await loadServicesData();
+
+    appointmentsModule.openNewAppointmentModal();
+}
+
+// Debounce otimizado
+const debouncedLoadAppointments = debounce((filters) => {
+    if (appointmentsModule?.loadAppointments) {
+        appointmentsModule.loadAppointments(filters);
+    }
+}, 300);
+
+// ================================
+// INICIALIZAÇÃO PRINCIPAL
+// ================================
+
+/**
+ * Inicialização principal com performance
+ */
+async function initialize() {
+    // Verificar se estamos na página correta
+    if (!window.location.pathname.includes('/agendame/dashboard')) {
         return;
     }
 
-    // Criar modal apenas quando necessário
-    const modalHTML = `
-        <div class="modal" id="trialUpgradeModal">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-crown"></i> Upgrade para Premium</h3>
-                        <button class="modal-close" onclick="closeModal('trialUpgradeModal')">×</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="upgrade-content">
-                            <div class="upgrade-icon">
-                                <i class="fas fa-gem"></i>
-                            </div>
-                            <h4>Mantenha todos os seus dados!</h4>
-                            <p>Seu trial está acabando. Faça upgrade para manter acesso completo ao sistema.</p>
-                            <div class="upgrade-features">
-                                <div class="feature"><i class="fas fa-check"></i> Acesso vitalício</div>
-                                <div class="feature"><i class="fas fa-check"></i> Suporte 24/7</div>
-                                <div class="feature"><i class="fas fa-check"></i> Relatórios avançados</div>
-                                <div class="feature"><i class="fas fa-check"></i> Atualizações constantes</div>
-                            </div>
-                            <div class="price-card">
-                                <div class="price">R$ 19,99</div>
-                                <div class="period">/mês • Cancele quando quiser</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-primary" onclick="handleTrialUpgrade()">
-                            <i class="fas fa-bolt"></i> Fazer Upgrade Agora
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-}
-
-/**
- * Função para recarregar dados (otimizada)
- */
-export async function refreshData() {
-    console.time('🔄 Recarregamento de dados');
-
-    // Mostrar feedback imediato
-    showAlert('🔄 Atualizando dados...', 'info');
-
-    // Carregar dados em paralelo
-    const [services, appointments, clients] = await Promise.allSettled([
-        loadServices(),
-        loadAppointments(),
-        loadClients()
-    ]);
-
-    // Atualizar UI após carregamento
-    requestAnimationFrame(() => {
-        refreshDashboard();
-        updateAllCounts();
-
-        // Verificar se houve erros
-        const errors = [services, appointments, clients]
-            .filter(result => result.status === 'rejected')
-            .map(result => result.reason);
-
-        if (errors.length === 0) {
-            showAlert('✅ Dados atualizados com sucesso!', 'success');
-        } else {
-            showAlert(`⚠️ ${errors.length} ${errors.length === 1 ? 'erro' : 'erros'} ao atualizar dados`, 'warning');
-        }
-    });
-
-    console.timeEnd('🔄 Recarregamento de dados');
-}
-
-// ================================
-// INICIALIZAÇÃO PRINCIPAL (OTIMIZADA)
-// ================================
-
-/**
- * Inicialização principal otimizada
- */
-async function initialize() {
-    console.time('⏱️ Inicialização completa');
-
-    // Configurar data filter padrão (deferido)
+    // Configurações iniciais não-bloqueantes
     requestIdleCallback(() => {
+        // Configurar data filter
         const dateFilter = document.getElementById('appointmentDateFilter');
         if (dateFilter) {
-            dateFilter.value = new Date().toISOString().split('T')[0];
+            dateFilter.valueAsDate = new Date();
+        }
+
+        // Configurar nome do usuário se disponível
+        const userName = localStorage.getItem('user_name');
+        if (userName) {
+            const nameElement = document.getElementById('userName');
+            if (nameElement) {
+                nameElement.textContent = userName;
+            }
         }
     });
 
-    // Verificar autenticação
-    const isAuth = await initAuth();
+    // Inicializar auth e app
+    try {
+        const auth = await loadAuthModule();
+        await auth.initAuth();
 
-    // Inicializar apenas se estiver na página correta e autenticado
-    if (window.location.pathname.includes('/agendame/dashboard')) {
-        if (isAuth) {
-            await initializeApp();
+        if (auth.isAuthenticated()) {
+            // Delay mínimo para UI responder
+            setTimeout(() => {
+                initializeApp().catch(console.error);
+            }, INITIAL_LOAD_DELAY);
         } else {
-            protectRoute();
+            auth.protectRoute();
         }
+    } catch (error) {
+        console.error('Erro crítico na inicialização:', error);
+        showAlert('❌ Erro ao carregar aplicação', 'error');
     }
-
-    console.timeEnd('⏱️ Inicialização completa');
 }
 
 // ================================
 // MANIPULADOR DE ERROS GLOBAL
 // ================================
 
-// Capturar erros não tratados
-window.addEventListener('error', function(e) {
-    console.error('💥 Erro global capturado:', e.error);
-    // Não mostrar alerta para evitar poluição visual
-});
+// Capturar erros de forma não-bloqueante
+if (window.addEventListener) {
+    window.addEventListener('error', (e) => {
+        if (e.error && e.error.message) {
+            console.error('💥 Erro:', e.error.message, e.error.stack);
+        }
+    }, false);
 
-// Capturar promessas não tratadas
-window.addEventListener('unhandledrejection', function(e) {
-    console.error('💥 Promise rejeitada não tratada:', e.reason);
-});
-
-// ================================
-// INICIALIZAÇÃO
-// ================================
-
-// Usar DOMContentLoaded com verificação de performance
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initialize);
-} else {
-    // DOM já carregado
-    setTimeout(initialize, 0);
+    window.addEventListener('unhandledrejection', (e) => {
+        console.error('💥 Promise rejeitada:', e.reason);
+    }, false);
 }
 
 // ================================
-// EXPORTAÇÕES PARA ESCOPO GLOBAL (OTIMIZADAS)
+// INICIALIZAÇÃO COM PRIORIDADE
 // ================================
 
-// Expor apenas funções essenciais
-Object.assign(window, {
-    switchTab,
-    openNewServiceModal,
-    saveNewService,
-    openNewAppointmentModal,
-    saveNewAppointment,
+// Estratégia de carregamento baseada em readyState
+if (document.readyState === 'loading') {
+    // DOM ainda carregando, aguardar evento
+    document.addEventListener('DOMContentLoaded', () => {
+        requestIdleCallback(initialize, { timeout: 1000 });
+    });
+} else {
+    // DOM pronto, inicializar no próximo ciclo
+    setTimeout(() => {
+        if (document.hidden) {
+            // Página em background, esperar visibilidade
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    initialize();
+                }
+            });
+        } else {
+            initialize();
+        }
+    }, 0);
+}
+
+// ================================
+// EXPORTAÇÕES PARA ESCOPO GLOBAL
+// ================================
+
+// Exportar apenas funções essenciais com lazy loading
+const globalExports = {
+    // Funções básicas
+    switchTab: switchTabOptimized,
+    refreshData: debouncedRefreshData,
     closeModal,
-    refreshData,
 
-    // Funções de serviços (carregadas sob demanda)
+    // Modais (lazy)
+    openNewServiceModal,
+    openNewAppointmentModal,
+
+    // Configurações
+    setConfig: (key, value) => {
+        appState.config = appState.config || {};
+        appState.config[key] = value;
+    },
+
+    // Utils
+    showAlert,
+
+    // Lazy getters para funcionalidades pesadas
     get editService() {
-        return import('./services.js').then(module => module.editService);
+        return (id) => {
+            import('./services.js').then(module => {
+                if (module.editService) module.editService(id);
+            });
+        };
     },
+
     get saveEditedService() {
-        return import('./services.js').then(module => module.saveEditedService);
-    },
+        return () => {
+            import('./services.js').then(module => {
+                if (module.saveEditedService) module.saveEditedService();
+            });
+        };
+    }
+};
 
-    // Funções de WhatsApp (carregadas sob demanda)
-    get sendWhatsAppReminder() {
-        return import('./whatsapp.js').then(module => module.sendWhatsAppReminder);
-    },
-    get sendWhatsAppToClient() {
-        return import('./whatsapp.js').then(module => module.sendWhatsAppToClient);
-    },
+// Atribuir ao window de forma segura
+Object.keys(globalExports).forEach(key => {
+    if (!window[key]) {
+        window[key] = globalExports[key];
+    }
+});
 
-    // Funções de empresa (já importadas)
-    saveCompanyInfo: () => {
-        if (window.saveCompanyData) return window.saveCompanyData();
-        console.warn('Função saveCompanyData não disponível');
-    },
-    copyCompanyUrl: () => {
-        if (window.copyCompanyURL) return window.copyCompanyURL();
-        console.warn('Função copyCompanyURL não disponível');
+// Cleanup ao sair da página
+window.addEventListener('beforeunload', () => {
+    // Abortar todos os controllers pendentes
+    Object.values(loadControllers).forEach(controller => {
+        if (controller && typeof controller.abort === 'function') {
+            controller.abort();
+        }
+    });
+
+    // Limpar observer
+    if (tabObserver) {
+        tabObserver.disconnect();
     }
 });

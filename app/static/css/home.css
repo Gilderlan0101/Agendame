@@ -1218,6 +1218,542 @@ body {
     border-radius: 4px;
 }
 
+/* ======================================================
+   TABELAS (Agendamentos e Clientes)
+   ====================================================== */
+.table-container {
+    overflow-x: auto;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--surface);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+}
+
+thead {
+    background: var(--surface-alt);
+    border-bottom: 2px solid var(--border);
+}
+
+th {
+    padding: 16px;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+tbody tr {
+    transition: var(--transition-fast);
+}
+
+tbody tr:hover {
+    background: var(--surface-alt);
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+    text-transform: uppercase;
+}
+
+.status-badge.confirmed {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--secondary-color);
+}
+
+.status-badge.pending {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--accent-color);
+}
+
+.status-badge.canceled {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
+}
+
+.status-badge.completed {
+    background: rgba(124, 58, 237, 0.1);
+    color: var(--primary-color);
+}
+
+/* Ações em tabelas */
+.table-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.btn-table {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.btn-table:hover {
+    background: var(--surface-alt);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-table.view {
+    color: var(--secondary-color);
+}
+
+.btn-table.edit {
+    color: var(--primary-color);
+}
+
+.btn-table.delete {
+    color: var(--danger-color);
+}
+
+/* Mensagem de tabela vazia */
+.empty-table-message {
+    text-align: center;
+    padding: 48px;
+    color: var(--text-muted);
+}
+
+.empty-table-message i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-table-message p {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.empty-table-message .btn {
+    margin-top: 16px;
+}
+
+/* ======================================================
+   MODAL: Detalhes do Agendamento
+   ====================================================== */
+.appointment-details-modal .modal-dialog {
+    max-width: 600px;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.detail-item {
+    margin-bottom: 20px;
+}
+
+.detail-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.detail-value {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.detail-value .status-badge {
+    margin-top: 4px;
+}
+
+/* ======================================================
+   MODAL: Detalhes do Cliente
+   ====================================================== */
+.client-details-modal .modal-dialog {
+    max-width: 500px;
+}
+
+.client-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 32px;
+}
+
+.client-avatar {
+    width: 80px;
+    height: 80px;
+    background: var(--gradient-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 32px;
+}
+
+.client-basic-info h4 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+}
+
+.client-basic-info p {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.client-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.client-stat {
+    text-align: center;
+    padding: 16px;
+    background: var(--surface-alt);
+    border-radius: var(--radius-md);
+}
+
+.client-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 4px;
+}
+
+.client-stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* ======================================================
+   MODAL: Editar Agendamento
+   ====================================================== */
+.edit-appointment-modal .modal-dialog {
+    max-width: 500px;
+}
+
+/* ======================================================
+   MODAL: Confirmar Exclusão
+   ====================================================== */
+.delete-confirm-modal .modal-dialog {
+    max-width: 400px;
+}
+
+.confirm-content {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.confirm-icon {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #ef4444, #f87171);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    color: white;
+    font-size: 28px;
+}
+
+.confirm-content h4 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.confirm-content p {
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.confirm-content .text-danger {
+    color: var(--danger-color);
+    font-weight: 600;
+}
+
+.delete-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+.delete-actions .btn {
+    min-width: 120px;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--danger-color), #f87171);
+    color: white;
+}
+
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(239, 68, 68, 0.3);
+}
+
+/* ======================================================
+   MODAL: Meu Perfil
+   ====================================================== */
+.profile-modal .modal-dialog {
+    max-width: 500px;
+}
+
+.profile-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.profile-avatar {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 16px;
+    position: relative;
+}
+
+.profile-avatar-img {
+    width: 100%;
+    height: 100%;
+    background: var(--gradient-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 40px;
+}
+
+.change-avatar-btn {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 36px;
+    height: 36px;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.change-avatar-btn:hover {
+    background: var(--surface-alt);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.profile-header h4 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+}
+
+.profile-header p {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* ======================================================
+   MODAL: Configurações
+   ====================================================== */
+.settings-modal .modal-dialog {
+    max-width: 600px;
+}
+
+.settings-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+}
+
+.settings-tab {
+    padding: 12px 24px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    transition: var(--transition-fast);
+}
+
+.settings-tab:hover {
+    color: var(--primary-color);
+}
+
+.settings-tab.active {
+    color: var(--primary-color);
+}
+
+.settings-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--primary-color);
+    border-radius: 2px 2px 0 0;
+}
+
+.settings-tab-content {
+    display: none;
+}
+
+.settings-tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
+.setting-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.setting-label strong {
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.setting-label span {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Switch Toggle */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border);
+    transition: var(--transition-normal);
+    border-radius: var(--radius-full);
+}
+
+.switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: var(--transition-normal);
+    border-radius: 50%;
+}
+
+input:checked + .switch-slider {
+    background-color: var(--primary-color);
+}
+
+input:checked + .switch-slider:before {
+    transform: translateX(24px);
+}
+
+/* ======================================================
+   FORM SELECT IMPROVED
+   ====================================================== */
+.select-wrapper {
+    position: relative;
+}
+
+.select-wrapper .form-control {
+    appearance: none;
+    padding-right: 40px;
+}
+
+.select-arrow {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--text-muted);
+}
+
+/* ======================================================
+   TIME INPUT STYLING
+   ====================================================== */
+.time-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.time-input-group .form-control {
+    flex: 1;
+}
+
 .alert-content button:hover {
     background: var(--background);
     color: var(--text-primary);

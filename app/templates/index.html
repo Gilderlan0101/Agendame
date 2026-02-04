@@ -134,7 +134,6 @@
                             <h3>Faturamento Hoje</h3>
                             <div class="stat-value" id="todayRevenue">R$ 0,00</div>
                             <div class="stat-trend positive">
-                                <i class="fas fa-arrow-up"></i> 12% vs ontem
                             </div>
                         </div>
                     </div>
@@ -147,7 +146,6 @@
                             <h3>Agendamentos Hoje</h3>
                             <div class="stat-value" id="todayAppointments">0</div>
                             <div class="stat-trend positive">
-                                <i class="fas fa-arrow-up"></i> 3 novos
                             </div>
                         </div>
                     </div>
@@ -160,7 +158,6 @@
                             <h3>Clientes</h3>
                             <div class="stat-value" id="totalClients">0</div>
                             <div class="stat-trend positive">
-                                <i class="fas fa-user-plus"></i> 2 novos
                             </div>
                         </div>
                     </div>
@@ -173,7 +170,6 @@
                             <h3>Serviços Ativos</h3>
                             <div class="stat-value" id="activeServices">0</div>
                             <div class="stat-trend neutral">
-                                <i class="fas fa-minus"></i> Sem alteração
                             </div>
                         </div>
                     </div>
@@ -601,6 +597,423 @@
         </div>
     </div>
 
+    <!-- Modal: Detalhes do Agendamento -->
+<div class="modal appointment-details-modal" id="appointmentDetailsModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-calendar-alt"></i> Detalhes do Agendamento</h3>
+                <button class="modal-close" onclick="closeModal('appointmentDetailsModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Cliente</div>
+                        <div class="detail-value" id="detailClientName">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Telefone</div>
+                        <div class="detail-value" id="detailClientPhone">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Serviço</div>
+                        <div class="detail-value" id="detailService">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Preço</div>
+                        <div class="detail-value" id="detailPrice">R$ 0,00</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Data</div>
+                        <div class="detail-value" id="detailDate">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Horário</div>
+                        <div class="detail-value" id="detailTime">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value">
+                            <span class="status-badge confirmed" id="detailStatus">Confirmado</span>
+                        </div>
+                    </div>
+                    <div class="detail-item full-width">
+                        <div class="detail-label">Observações</div>
+                        <div class="detail-value" id="detailNotes">-</div>
+                    </div>
+                    <div class="detail-item full-width">
+                        <div class="detail-label">Criado em</div>
+                        <div class="detail-value" id="detailCreatedAt">-</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('appointmentDetailsModal')">Fechar</button>
+                <button class="btn btn-primary" onclick="editAppointmentFromDetails()">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Editar Agendamento -->
+<div class="modal edit-appointment-modal" id="editAppointmentModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Editar Agendamento</h3>
+                <button class="modal-close" onclick="closeModal('editAppointmentModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="editAppointmentForm">
+                    <input type="hidden" id="editAppointmentId">
+                    <div class="form-group">
+                        <label for="editAppointmentClientName">Nome do Cliente *</label>
+                        <input type="text" id="editAppointmentClientName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAppointmentClientPhone">Telefone *</label>
+                        <input type="text" id="editAppointmentClientPhone" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAppointmentService">Serviço *</label>
+                        <select id="editAppointmentService" class="form-control" required>
+                            <option value="">Selecione um serviço...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAppointmentDate">Data *</label>
+                        <input type="date" id="editAppointmentDate" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAppointmentTime">Horário *</label>
+                        <input type="time" id="editAppointmentTime" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAppointmentStatus">Status *</label>
+                        <select id="editAppointmentStatus" class="form-control" required>
+                            <option value="confirmed">Confirmado</option>
+                            <option value="pending">Pendente</option>
+                            <option value="completed">Concluído</option>
+                            <option value="canceled">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAppointmentNotes">Observações</label>
+                        <textarea id="editAppointmentNotes" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('editAppointmentModal')">Cancelar</button>
+                <button class="btn btn-success" onclick="saveEditedAppointment()">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Detalhes do Cliente -->
+<div class="modal client-details-modal" id="clientDetailsModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user"></i> Detalhes do Cliente</h3>
+                <button class="modal-close" onclick="closeModal('clientDetailsModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="client-info">
+                    <div class="client-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="client-basic-info">
+                        <h4 id="detailClientFullName">Carregando...</h4>
+                        <p id="detailClientContact">-</p>
+                        <p id="detailClientEmail">-</p>
+                    </div>
+                </div>
+
+                <div class="client-stats">
+                    <div class="client-stat">
+                        <div class="client-stat-value" id="detailClientTotalAppointments">0</div>
+                        <div class="client-stat-label">Agendamentos</div>
+                    </div>
+                    <div class="client-stat">
+                        <div class="client-stat-value" id="detailClientTotalSpent">R$ 0</div>
+                        <div class="client-stat-label">Total Gasto</div>
+                    </div>
+                    <div class="client-stat">
+                        <div class="client-stat-value" id="detailClientLastVisit">-</div>
+                        <div class="client-stat-label">Última Visita</div>
+                    </div>
+                </div>
+
+                <div class="detail-item">
+                    <div class="detail-label">Cadastrado em</div>
+                    <div class="detail-value" id="detailClientCreatedAt">-</div>
+                </div>
+
+                <div class="detail-item">
+                    <div class="detail-label">Observações</div>
+                    <div class="detail-value" id="detailClientNotes">-</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('clientDetailsModal')">Fechar</button>
+                <button class="btn btn-primary" onclick="editClientFromDetails()">
+                    <i class="fas fa-edit"></i> Editar Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Confirmar Exclusão -->
+<div class="modal delete-confirm-modal" id="deleteConfirmModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-trash"></i> Confirmar Exclusão</h3>
+                <button class="modal-close" onclick="closeModal('deleteConfirmModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="confirm-content">
+                    <div class="confirm-icon">
+                        <i class="fas fa-exclamation"></i>
+                    </div>
+                    <h4>Tem certeza que deseja excluir?</h4>
+                    <p id="deleteItemName">Este item</p>
+                    <p class="text-danger">Esta ação não pode ser desfeita!</p>
+
+                    <input type="hidden" id="deleteItemId">
+                    <input type="hidden" id="deleteItemType">
+
+                    <div class="delete-actions">
+                        <button class="btn btn-secondary" onclick="closeModal('deleteConfirmModal')">
+                            Cancelar
+                        </button>
+                        <button class="btn btn-danger" onclick="confirmDelete()">
+                            <i class="fas fa-trash"></i> Excluir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Meu Perfil -->
+<div class="modal profile-modal" id="profileModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user"></i> Meu Perfil</h3>
+                <button class="modal-close" onclick="closeModal('profileModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <div class="profile-avatar-img">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <button class="change-avatar-btn">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    </div>
+                    <h4 id="profileUserName">Carregando...</h4>
+                    <p id="profileUserEmail">carregando@email.com</p>
+                </div>
+
+                <form id="profileForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="profileFirstName">Nome</label>
+                            <input type="text" id="profileFirstName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="profileLastName">Sobrenome</label>
+                            <input type="text" id="profileLastName" class="form-control" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="profileEmail">E-mail</label>
+                            <input type="email" id="profileEmail" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="profilePhone">Telefone</label>
+                            <input type="text" id="profilePhone" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="profileWhatsApp">WhatsApp</label>
+                            <input type="text" id="profileWhatsApp" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-primary" type="button" onclick="saveProfile()">
+                            <i class="fas fa-save"></i> Salvar Alterações
+                        </button>
+                        <button class="btn btn-outline" type="button" onclick="openChangePasswordModal()">
+                            <i class="fas fa-key"></i> Alterar Senha
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Configurações -->
+<div class="modal settings-modal" id="settingsModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> Configurações</h3>
+                <button class="modal-close" onclick="closeModal('settingsModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-tabs">
+                    <button class="settings-tab active" data-tab="general">Geral</button>
+                    <button class="settings-tab" data-tab="notifications">Notificações</button>
+                    <button class="settings-tab" data-tab="privacy">Privacidade</button>
+                </div>
+
+                <div class="settings-tab-content active" id="generalTab">
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Tema</strong>
+                            <span>Escolha entre tema claro ou escuro</span>
+                        </div>
+                        <select class="form-control" style="width: auto;">
+                            <option value="light">Claro</option>
+                            <option value="dark">Escuro</option>
+                            <option value="system">Sistema</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Idioma</strong>
+                            <span>Linguagem da interface</span>
+                        </div>
+                        <select class="form-control" style="width: auto;">
+                            <option value="pt">Português</option>
+                            <option value="en">Inglês</option>
+                            <option value="es">Espanhol</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Fuso Horário</strong>
+                            <span>Defina seu fuso horário local</span>
+                        </div>
+                        <select class="form-control" style="width: auto;">
+                            <option value="America/Sao_Paulo">Brasília (GMT-3)</option>
+                            <option value="America/New_York">Nova York (GMT-4)</option>
+                            <option value="Europe/London">Londres (GMT+1)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-tab-content" id="notificationsTab">
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>E-mail de Notificações</strong>
+                            <span>Receba notificações por e-mail</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Notificações de Agendamento</strong>
+                            <span>Alertas de novos agendamentos</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Lembretes para Clientes</strong>
+                            <span>Enviar lembretes para clientes</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-tab-content" id="privacyTab">
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Exportar Dados</strong>
+                            <span>Baixe uma cópia dos seus dados</span>
+                        </div>
+                        <button class="btn btn-outline btn-sm">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <strong>Excluir Conta</strong>
+                            <span>Remover permanentemente sua conta</span>
+                        </div>
+                        <button class="btn btn-danger btn-sm">
+                            <i class="fas fa-trash"></i> Excluir Conta
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveSettings()">
+                    <i class="fas fa-save"></i> Salvar Configurações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Alterar Senha -->
+<div class="modal" id="changePasswordModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-key"></i> Alterar Senha</h3>
+                <button class="modal-close" onclick="closeModal('changePasswordModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label for="currentPassword">Senha Atual *</label>
+                        <input type="password" id="currentPassword" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">Nova Senha *</label>
+                        <input type="password" id="newPassword" class="form-control" required>
+                        <small class="form-text">Mínimo de 8 caracteres</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirmar Nova Senha *</label>
+                        <input type="password" id="confirmPassword" class="form-control" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('changePasswordModal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="savePassword()">Salvar Senha</button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <!-- Scripts -->
     <script type="module" src="{{ url_for('static', path='main.js') }}"></script>
 
@@ -653,5 +1066,131 @@
             });
         });
     </script>
+    <script>
+    // Função para abrir modais
+    window.openModal = function(modalId) {
+        document.getElementById(modalId).classList.add('show');
+    };
+
+    // Configurar tabs de configurações
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tabs de configurações
+        document.querySelectorAll('.settings-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+
+                // Remover active de todas as tabs
+                document.querySelectorAll('.settings-tab').forEach(t => {
+                    t.classList.remove('active');
+                });
+                document.querySelectorAll('.settings-tab-content').forEach(c => {
+                    c.classList.remove('active');
+                });
+
+                // Adicionar active na tab clicada
+                this.classList.add('active');
+                document.getElementById(tabId + 'Tab').classList.add('active');
+            });
+        });
+
+        // Fechar modais ao clicar fora
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('show');
+                }
+            });
+        });
+
+        // Configurar dropdown do usuário para abrir modais
+        document.querySelector('.dropdown-item[href="#"]').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (this.querySelector('i.fa-user')) {
+                openModal('profileModal');
+            } else if (this.querySelector('i.fa-cog')) {
+                openModal('settingsModal');
+            }
+            document.querySelector('.dropdown-menu').classList.remove('show');
+        });
+    });
+
+    // Funções auxiliares para os modais
+    window.openChangePasswordModal = function() {
+        closeModal('profileModal');
+        setTimeout(() => {
+            openModal('changePasswordModal');
+        }, 300);
+    };
+
+    window.editAppointmentFromDetails = function() {
+        closeModal('appointmentDetailsModal');
+        setTimeout(() => {
+            openModal('editAppointmentModal');
+        }, 300);
+    };
+
+    window.editClientFromDetails = function() {
+        closeModal('clientDetailsModal');
+        // Implementar função para abrir modal de edição de cliente
+        console.log('Abrir edição de cliente');
+    };
+
+    // Função para abrir modal de confirmação de exclusão
+    window.showDeleteConfirm = function(itemId, itemType, itemName) {
+        document.getElementById('deleteItemId').value = itemId;
+        document.getElementById('deleteItemType').value = itemType;
+        document.getElementById('deleteItemName').textContent = itemName;
+        openModal('deleteConfirmModal');
+    };
+
+    window.confirmDelete = function() {
+        const itemId = document.getElementById('deleteItemId').value;
+        const itemType = document.getElementById('deleteItemType').value;
+
+        console.log(`Excluir ${itemType} com ID ${itemId}`);
+        // Implementar lógica de exclusão aqui
+
+        closeModal('deleteConfirmModal');
+        showAlert(`${itemType.charAt(0).toUpperCase() + itemType.slice(1)} excluído com sucesso!`, 'success');
+    };
+
+    // Função para mostrar alertas
+    window.showAlert = function(message, type = 'info') {
+        const alertContainer = document.getElementById('alertContainer');
+        const alertId = 'alert-' + Date.now();
+
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type}`;
+        alert.id = alertId;
+        alert.innerHTML = `
+            <div class="alert-content">
+                <i class="fas fa-${getAlertIcon(type)}"></i>
+                <span>${message}</span>
+                <button onclick="document.getElementById('${alertId}').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+
+        alertContainer.appendChild(alert);
+
+        // Remover automaticamente após 5 segundos
+        setTimeout(() => {
+            if (document.getElementById(alertId)) {
+                document.getElementById(alertId).remove();
+            }
+        }, 5000);
+    };
+
+    function getAlertIcon(type) {
+        const icons = {
+            'success': 'check-circle',
+            'warning': 'exclamation-triangle',
+            'error': 'times-circle',
+            'info': 'info-circle'
+        };
+        return icons[type] || 'info-circle';
+    }
+</script>
 </body>
 </html>
