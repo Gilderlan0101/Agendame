@@ -31,7 +31,11 @@ templates = templates_config.templates
 
 
 
+import os
+from urllib.parse import quote
+from typing import List
 
+from fastapi import Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -47,17 +51,25 @@ class AuthMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
 
+        # Verifica se está em produção
+        self.is_production = os.getenv('ENVIRONMENT', 'development') == 'production'
+
+        # Domínio para cookies (em produção)
+        self.cookie_domain = os.getenv('COOKIE_DOMAIN', None)
+
         # Rotas públicas que NÃO precisam de autenticação
         self.public_routes = {
             '/',  # Landpage
             '/login',  # Página de login HTML
             '/auth/agendame/trial',  # Página de trial
-            '404.html',  # Página 404
+            '/404',  # Página 404
             '/health',
             '/docs',
             '/redoc',
             '/openapi.json',
             '/favicon.ico',
+            '/robots.txt',
+            '/sitemap.xml',
         }
 
         # APIs públicas (não redirecionam, retornam JSON)
@@ -65,42 +77,84 @@ class AuthMiddleware(BaseHTTPMiddleware):
             '/auth/login',  # API de login (POST)
             '/auth/register',  # API de registro
             '/auth/signup/free-trial',  # API de trial
+            '/auth/debug',  # API de debug
         }
 
         # Prefixos de rotas públicas
         self.public_prefixes = [
             '/static/',
-            '/docs',
-            '/redoc',
+            '/docs/',
+            '/redoc/',
             '/openapi',
-            '/favicon.ico',
+            '/favicon',
+            '/health',
+            '/_health',  # Para monitoramento
         ]
+
+        # Hosts/domínios permitidos (para produção)
+        self.allowed_hosts = self._get_allowed_hosts()
+
+    def _get_allowed_hosts(self) -> List[str]:
+        """Obtém lista de hosts permitidos do ambiente"""
+        hosts_str = os.getenv('ALLOWED_HOSTS', '')
+        if hosts_str:
+            return [host.strip() for host in hosts_str.split(',')]
+
+        # Hosts padrão
+        default_hosts = ['localhost', '127.0.0.1']
+        if self.is_production:
+            # Em produção, adicione seu domínio
+            domain = os.getenv('DOMAIN')
+            if domain:
+                default_hosts.append(domain)
+                default_hosts.append(f'www.{domain}')
+
+        return default_hosts
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
         method = request.method
 
-        print(f"\n=== MIDDLEWARE: {method} {path} ===")
+        # Verificação de host (em produção)
+        if self.is_production and request.headers.get('host'):
+            host = request.headers.get('host').split(':')[0]
+            if host not in self.allowed_hosts:
+                print(f"✗ Host não permitido: {host}")
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={'detail': 'Host não permitido'}
+                )
+
+        # Log simplificado em produção
+        if self.is_production:
+            print(f"{method} {path}")
+        else:
+            print(f"\n=== MIDDLEWARE: {method} {path} ===")
 
         # Verifica se é uma rota pública
         if self._is_public_route(path, method):
-            print(f"✓ Rota pública: {path}")
+            if not self.is_production:
+                print(f"✓ Rota pública: {path}")
             return await call_next(request)
 
-        print(f"✗ Rota protegida: {path}")
+        if not self.is_production:
+            print(f"✗ Rota protegida: {path}")
 
         # Verifica autenticação
         auth_result = await self._check_authentication(request)
 
         if auth_result.get('authenticated'):
             # Usuário autenticado
-            print(f"✓ Usuário autenticado: {auth_result.get('user')}")
+            if not self.is_production:
+                print(f"✓ Usuário autenticado: {auth_result.get('user')}")
             request.state.user = auth_result.get('user')
             return await call_next(request)
         else:
             # Usuário não autenticado
-            print(f"✗ Não autenticado: {auth_result.get('error')}")
-            return await self._handle_unauthenticated(request, auth_result.get('error'))
+            error_msg = auth_result.get('error')
+            if not self.is_production:
+                print(f"✗ Não autenticado: {error_msg}")
+            return await self._handle_unauthenticated(request, error_msg)
 
     def _is_public_route(self, path: str, method: str = "GET") -> bool:
         """Verifica se a rota é pública"""
@@ -114,6 +168,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
             # API de login: só é pública para POST
             if path == '/auth/login':
                 return method == 'POST'
+            # API de debug: sempre pública
+            if path == '/auth/debug':
+                return True
             # Demais APIs são públicas para todos os métodos
             return True
 
@@ -129,13 +186,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
             if len(parts) >= 3:
                 # Exemplos públicos: /agendame/nome-empresa
                 # Exemplos privados: /agendame/dashboard, /agendame/services
-                if parts[2] not in ['dashboard', 'services', 'appointments', 'clients']:
+                private_sections = ['dashboard', 'services', 'appointments', 'clients', 'company', 'settings', 'profile']
+                if parts[2] not in private_sections:
                     return True
 
         # 5. Rotas curtas de empresas (ex: /nome-empresa)
         if len(path.split('/')) == 2 and path != '/':
             # Exemplo: /corte-supremo
-            return True
+            slug = path.strip('/')
+            if slug and '/' not in slug:
+                return True
 
         return False
 
@@ -153,7 +213,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if not access_token:
             return {'authenticated': False, 'error': 'Acesso negado.'}
 
-        print(f"Token encontrado: {access_token[:20]}...")
+        if not self.is_production:
+            print(f"Token encontrado: {access_token[:20]}...")
 
         try:
             from app.service.jwt.jwt_decode_token import DecodeToken
@@ -167,92 +228,45 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 return {'authenticated': False, 'error': 'Token inválido.'}
 
         except Exception as e:
-            print(f"Erro ao verificar token: {e}")
+            if not self.is_production:
+                print(f"Erro ao verificar token: {e}")
             return {'authenticated': False, 'error': 'Erro de autenticação'}
-
-
-    async def call_next(self, request: Request):
-        """
-        Chama o próximo middleware ou rota.
-        Este método é útil quando você precisa continuar o processamento
-        após alguma lógica no middleware.
-        """
-        # Cria uma função call_next que será passada para o próximo handler
-        async def inner_call_next(req):
-            # Simula a chamada ao próximo handler na cadeia
-            # Na prática, você precisaria do call_next original do dispatch
-            pass
-
-        # Se estamos lidando com uma rota pública que não requer autenticação,
-        # podemos mostrar a página normalmente
-        if request.url.path == '/login' or request.url.path.startswith('/agendame/trial'):
-            print(f"Mostrando página pública: {request.url.path}")
-
-            # Para retornar a página de login, você precisa renderizar o template
-            from pathlib import Path
-
-            from fastapi.templating import Jinja2Templates
-
-            BASE_DIR = Path(__file__).resolve().parent.parent
-            template_dir = BASE_DIR / 'app' / 'templates'
-            templates = Jinja2Templates(directory=str(template_dir))
-
-            # Extrai parâmetros da query string
-            error = request.query_params.get('error')
-            next_url = request.query_params.get('next', '/agendame/dashboard')
-            success = request.query_params.get('success')
-
-            # Renderiza o template de login
-            from fastapi.requests import Request as FastAPIRequest
-            from fastapi.responses import HTMLResponse
-
-            # Converte o Request do Starlette para contexto do template
-            context = {
-                "request": request,
-                "error": error,
-                "success": success,
-                "next_url": next_url
-            }
-
-            content = templates.get_template('login.html').render(context)
-            return HTMLResponse(content=content)
-
-        # Se não for uma rota de login/trial, não deveríamos chegar aqui
-        # pois essas rotas são públicas e são tratadas no dispatch
-        print(f"ERRO: call_next chamado para rota não pública: {request.url.path}")
-
-        # Fallback: redireciona para login
-        return RedirectResponse(
-            url=f'/login?next={quote(request.url.path, safe="")}',
-            status_code=status.HTTP_303_SEE_OTHER
-        )
-
 
     async def _handle_unauthenticated(self, request: Request, error: str = None):
         """Lida com requisições não autenticadas"""
 
         path = request.url.path
 
-        print(f"Tratando requisição não autenticada para: {path}")
+        if not self.is_production:
+            print(f"Tratando requisição não autenticada para: {path}")
 
         # Se for uma API (começa com /api/ ou /auth/ e NÃO é login), retorna JSON
         if (path.startswith('/api/') or
             (path.startswith('/auth/') and path != '/auth/login') or
             path.startswith('/agendame/api/')):
 
-            print("Retornando erro JSON para API")
+            if not self.is_production:
+                print("Retornando erro JSON para API")
+
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={
                     'detail': 'Não autenticado',
                     'error': error or 'Acesso negado.',
                 },
+                headers={
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+                    'Pragma': 'no-cache'
+                } if self.is_production else {}
             )
 
         # Se já estiver na página de login, mostra a página
         if path == '/login' or path.startswith('/agendame/trial'):
-            print("Já está em rota pública de login/trial")
-            return await self.call_next(request)
+            if not self.is_production:
+                print("Já está em rota pública de login/trial")
+
+            # Chama o próximo handler (que renderizará a página)
+            return await self.app(request.scope, request.receive, request._send)
 
         # Para rotas web, redireciona para login
         next_url = quote(path, safe='')
@@ -261,9 +275,22 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if error:
             redirect_url += f'&error={quote(error)}'
 
-        print(f"Redirecionando para: {redirect_url}")
+        if not self.is_production:
+            print(f"Redirecionando para: {redirect_url}")
 
-        return RedirectResponse(
+        response = RedirectResponse(
             url=redirect_url,
             status_code=status.HTTP_303_SEE_OTHER
         )
+
+        # Headers de segurança em produção
+        if self.is_production:
+            response.headers.update({
+                'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma': 'no-cache',
+                'X-Frame-Options': 'DENY',
+                'X-Content-Type-Options': 'nosniff',
+                'Referrer-Policy': 'strict-origin-when-cross-origin'
+            })
+
+        return response

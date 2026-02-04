@@ -58,8 +58,8 @@ async def checking_account(
                 value=access_token,
                 httponly=True,
                 max_age=3600,
-                secure=False,
-                samesite='lax',
+                secure=True,
+                samesite='lax' if request.url.scheme == 'http' else 'none',
             )
         else:
             # Se não tiver Request, cria uma resposta vazia
@@ -138,8 +138,8 @@ async def checking_account_trial(
                 value=access_token,
                 httponly=True,
                 max_age=3600,
-                secure=False,
-                samesite='lax',
+                secure=True,
+                samesite='lax' if request.url.scheme == 'http' else 'none',
             )
         else:
             response = None
