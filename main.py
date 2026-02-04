@@ -122,7 +122,6 @@ class Server:
             CORSMiddleware,
             allow_origins=[
                 str(ORIGINS_DEFAULT),
-                'http://192.168.1.103:8000/',
             ],  # Em produção, especifique os domínios
             allow_credentials=True,
             allow_methods=['*'],

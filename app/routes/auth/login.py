@@ -133,7 +133,7 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
             value=verify_auth.get('access_token'),
             httponly=True,
             max_age=3600,  # 1 hora
-            secure=False,  # True em produção com HTTPS
+            secure=True,  # True em produção com HTTPS
             samesite='lax',
         )
 
