@@ -16,11 +16,12 @@ export async function loadClients(isDashboard = false) {
     setLoading(true);
 
     try {
-        const response = await fetch('/clients', {
+        const response = await fetch('https://agendame.onrender.com/clients', {
             headers: {
                 'Authorization': `Bearer ${appState.token}`,
                 'Accept': 'application/json'
-            }
+            },
+            credentials: 'include'
         });
 
         if (response.ok) {

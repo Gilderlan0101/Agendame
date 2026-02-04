@@ -11,7 +11,7 @@ export async function logoutUser() {
         showLogoutConfirmation();
 
         // Chamar API de logout
-        const response = await fetch('http://127.0.0.0.1:8000/auth/logout', {
+        const response = await fetch('https://agendame.onrender.com/auth/logout', {
             method: 'GET',
             credentials: 'include', // Importante para enviar cookies
             headers: {
@@ -143,7 +143,7 @@ window.handleLogout = async function() {
     console.log('🖱️ Botão de logout clicado');
 
     // Verifica se está em uma página de agendamento
-    if (window.location.pathname.includes('http://127.0.0.0.1:8000/agendame/')) {
+    if (window.location.pathname.includes('https://agendame.onrender.com/agendame/')) {
         // Mostra confirmação
         const confirmed = confirm('Tem certeza que deseja sair? Você será redirecionado para a página de login.');
 
@@ -238,7 +238,7 @@ export async function checkTokenExpiration() {
 
     try {
         // Verificar token no backend
-        const response = await fetch('/auth/me', {
+        const response = await fetch('https://agendame.onrender.com/auth/me', {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json'
