@@ -269,7 +269,7 @@ function showSuccessModal(formData, apiResult) {
     modalUsername.textContent = formData.username;
     modalEmail.textContent = formData.email;
     modalBusiness.textContent = formData.business_name;
-    modalLink.textContent = `agendame.com/${formData.business_slug}`;
+    modalLink.textContent = `agendame.onrender.com/${formData.business_slug}`;
 
     successModal.style.display = 'flex';
 }
