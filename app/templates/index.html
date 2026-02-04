@@ -1204,5 +1204,66 @@
         return icons[type] || 'info-circle';
     }
 </script>
+
+<script>
+    // Keep Alive para Render.com
+    (function() {
+        console.log('🔋 Ativando keep-alive para Render...');
+
+        // URL do seu servidor
+        const SERVER_URL = window.location.origin || 'https://agendame.onrender.com';
+
+        // Intervalo de ping (a cada 5 minutos)
+        const PING_INTERVAL = 5 * 60 * 1000; // 5 minutos em milissegundos
+
+        // Função para fazer ping
+        function pingServer() {
+            console.log('📡 Enviando ping para manter servidor ativo...');
+
+            // Usar diferentes endpoints para evitar cache
+            const endpoints = ['/health', '/', '/api/ping', '/auth/ping'];
+            const randomEndpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
+
+            fetch(`${SERVER_URL}${randomEndpoint}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                mode: 'cors',
+                cache: 'no-store'
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Ping bem-sucedido');
+                } else {
+                    console.log('⚠️ Ping falhou com status:', response.status);
+                }
+            })
+            .catch(error => {
+                console.log('❌ Erro no ping:', error.message);
+            });
+        }
+
+        // Fazer primeiro ping imediatamente
+        pingServer();
+
+        // Configurar ping periódico
+        setInterval(pingServer, PING_INTERVAL);
+
+        // Também pingar quando o usuário interage com a página
+        const events = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+        events.forEach(event => {
+            window.addEventListener(event, () => {
+                // Ping extra quando usuário está ativo
+                setTimeout(pingServer, 1000);
+            }, { passive: true });
+        });
+
+        console.log(`✅ Keep-alive ativado (ping a cada ${PING_INTERVAL/60000} minutos)`);
+    })();
+</script>
+
+
 </body>
 </html>

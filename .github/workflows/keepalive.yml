@@ -1,0 +1,80 @@
+name: Keep Render Alive
+
+on:
+  schedule:
+    # Roda a cada 6 minutos
+    - cron: '*/6 * * * *'
+  
+  workflow_dispatch:
+  
+  # Opcional: roda quando você faz push
+  push:
+    branches: [ main, master ]
+
+jobs:
+  keep-alive:
+    name: 🔋 Manter Render Ativo
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📋 Verificar código
+      uses: actions/checkout@v4
+      
+    - name: 📡 Pingar endpoints
+      run: |
+        echo "🚀 Iniciando keep-alive para Render.com"
+        echo "========================================"
+        
+        # Configurações
+        BASE_URL="https://agendame.onrender.com"
+        ENDPOINTS=("/health" "/ping" "/keepalive" "/")
+        TIMEOUT=20
+        SUCCESS=0
+        
+        for endpoint in "${ENDPOINTS[@]}"; do
+          URL="${BASE_URL}${endpoint}"
+          echo ""
+          echo "👉 Testando: $URL"
+          
+          # Usar wget como alternativa se curl falhar
+          if command -v curl &> /dev/null; then
+            CMD="curl"
+          else
+            CMD="wget -qO-"
+          fi
+          
+          if $CMD -s \
+               --max-time $TIMEOUT \
+               --retry 1 \
+               -H "Accept: application/json" \
+               "$URL" > /dev/null 2>&1; then
+            echo "✅ Respondeu"
+            SUCCESS=1
+          else
+            echo "⏭️  Sem resposta (normal para free tier)"
+          fi
+          
+          # Pequena pausa
+          sleep 0.5
+        done
+        
+        echo ""
+        echo "========================================"
+        
+        if [ $SUCCESS -eq 1 ]; then
+          echo "🎉 Servidor está respondendo!"
+          echo "📅 Próximo ping: $(date -d '+6 minutes' '+%H:%M:%S')"
+          exit 0
+        else
+          echo "⚠️  Atenção: Nenhum endpoint respondeu"
+          echo "💡 O servidor pode estar iniciando ou offline"
+          echo "🔄 Tentando novamente em 6 minutos..."
+          exit 0  # Não falha, apenas tenta novamente depois
+        fi
+    
+    - name: 📝 Registrar execução
+      if: always()
+      run: |
+        echo "🏁 Workflow executado em: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+        echo "🔗 Serviço: https://agendame.onrender.com"
+        echo "⏰ Frequência: A cada 6 minutos"
