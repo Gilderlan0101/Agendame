@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
+from fastapi.responses import JSONResponse
+
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
@@ -97,20 +99,31 @@ class Server:
         self.app.mount('/static', static_files, name='static')
 
         # Middleware para MIME types
+       # No seu main.py, modifique a função add_mime_type_header:
         @self.app.middleware('http')
         async def add_mime_type_header(request: Request, call_next):
-            response = await call_next(request)
+            try:
+                response = await call_next(request)
 
-            path = request.url.path
-            if path.endswith('.js'):
-                response.headers['Content-Type'] = 'text/javascript'
-            elif path.endswith('.css'):
-                response.headers['Content-Type'] = 'text/css'
-            elif path.endswith('.html'):
-                response.headers['Content-Type'] = 'text/html'
+                path = request.url.path
+                if path.endswith('.js'):
+                    response.headers['Content-Type'] = 'text/javascript'
+                elif path.endswith('.css'):
+                    response.headers['Content-Type'] = 'text/css'
+                elif path.endswith('.html'):
+                    response.headers['Content-Type'] = 'text/html'
 
-            return response
+                return response
 
+            except RuntimeError as e:
+                if "No response returned" in str(e):
+                    # Isso acontece quando uma rota não retorna nada
+                    print(f"⚠️  Rota {request.url.path} não retornou resposta")
+                    return JSONResponse(
+                        status_code=500,
+                        content={"detail": "Erro interno: rota não retornou resposta"}
+                    )
+                raise
     # --------------------------------------------------
 
     def setup_middlewares(self) -> None:
