@@ -121,15 +121,11 @@ class Appointments:
         open_time: str,
         close_time: str,
         slot_duration: int,
-        target_date: Optional[date] = None,  # Adicionar data alvo
+        target_date: Optional[date] = None,
+        min_booking_hours: int = 1,
     ) -> List[str]:
         """Gera todos os slots de tempo possíveis, filtrando horários passados."""
-        print(
-            f'DEBUG _generate_time_slots: open_time={open_time}, close_time={close_time}, slot_duration={slot_duration}, target_date={target_date}'
-        )
-
         if not open_time or not close_time:
-            print('DEBUG: Horário de abertura/fechamento vazio')
             return []
 
         slots = []
@@ -137,55 +133,35 @@ class Appointments:
             current_slot = datetime.strptime(open_time, '%H:%M')
             end = datetime.strptime(close_time, '%H:%M')
 
-            # Se for hoje, obter hora atual
-            current_time = None
+            # Se for hoje, filtrar horários que já passaram
             if target_date and target_date == date.today():
                 now = datetime.now()
-                current_time = now.time()
-                print(f'DEBUG: É hoje! Hora atual: {current_time}')
 
-            print(
-                f'DEBUG: Primeiro slot: {current_slot.time()}, último possível: {end.time()}'
-            )
+                # Calcular hora mínima para agendamento (hora atual + min_booking_hours)
+                min_datetime = now + timedelta(hours=min_booking_hours)
+                min_time = min_datetime.time()
+
+                # Se a hora mínima for depois do fechamento, não há slots
+                min_datetime_obj = datetime.combine(date.today(), min_time)
+                end_datetime_obj = datetime.combine(date.today(), end.time())
+                if min_datetime_obj >= end_datetime_obj:
+                    return []
 
             while current_slot + timedelta(minutes=slot_duration) <= end:
                 slot_time_str = current_slot.strftime('%H:%M')
                 slot_time_obj = current_slot.time()
 
-                # Se for hoje, filtrar horários que já passaram
-                if target_date == date.today() and current_time:
-                    # Adicionar margem de segurança (ex: não permitir agendamento para menos de 1 hora)
-                    min_booking_hours = (
-                        1  # Pode ser ajustável nas configurações
-                    )
-                    min_time = (
-                        datetime.now() + timedelta(hours=min_booking_hours)
-                    ).time()
-
-                    print(
-                        f'DEBUG: Slot {slot_time_str} - Hora atual: {current_time}, Hora mínima: {min_time}'
-                    )
-
+                # Filtrar se for hoje
+                if target_date == date.today():
                     if slot_time_obj >= min_time:
                         slots.append(slot_time_str)
-                        print(
-                            f'DEBUG: Slot {slot_time_str} ACEITO (após hora mínima)'
-                        )
-                    else:
-                        print(
-                            f'DEBUG: Slot {slot_time_str} REJEITADO (antes da hora mínima)'
-                        )
                 else:
                     # Se não for hoje, aceitar todos os slots
                     slots.append(slot_time_str)
-                    print(f'DEBUG: Slot {slot_time_str} ACEITO (não é hoje)')
 
                 current_slot += timedelta(minutes=slot_duration)
 
-            print(f'DEBUG: Slots gerados: {slots}')
-
-        except ValueError as e:
-            print(f'DEBUG: Erro ao parse horários: {e}')
+        except ValueError:
             return []
 
         return slots
@@ -198,14 +174,7 @@ class Appointments:
         max_daily: int,
     ) -> List[str]:
         """Filtra slots disponíveis considerando duração do serviço."""
-        print(f'DEBUG _filter_available_slots:')
-        print(f'  - Total slots: {len(all_slots)}')
-        print(f'  - Slots agendados: {booked_slots}')
-        print(f'  - Duração serviço: {service_duration} min')
-        print(f'  - Máximo diário: {max_daily}')
-
         if len(booked_slots) >= max_daily:
-            print('DEBUG: Limite diário atingido')
             return []
 
         available = []
@@ -225,28 +194,17 @@ class Appointments:
                             )
 
                             if time_diff < service_duration:
-                                print(
-                                    f'DEBUG: Slot {slot} conflita com {booked} (diferença: {time_diff} min)'
-                                )
                                 is_available = False
                                 break
                         except ValueError:
-                            print(
-                                f'DEBUG: Erro ao parse booked time: {booked}'
-                            )
                             continue
 
                     if is_available:
                         available.append(slot)
-                        print(f'DEBUG: Slot {slot} disponível')
-                else:
-                    print(f'DEBUG: Slot {slot} já agendado')
 
             except ValueError:
-                print(f'DEBUG: Erro ao parse slot: {slot}')
                 continue
 
-        print(f'DEBUG: Slots disponíveis finais: {available}')
         return available
 
     async def get_available_times(
@@ -297,12 +255,16 @@ class Appointments:
                 'message': 'Empresa não funciona neste dia',
             }
 
-        # MODIFICAÇÃO AQUI: Passar target_date para a função
+        # Obter min_booking_hours das configurações
+        min_booking_hours = settings.get('min_booking_hours', 1)
+
+        # Gerar slots de tempo
         all_time_slots = self._generate_time_slots(
             business_hours[day_name]['open'],
             business_hours[day_name]['close'],
             settings['time_slot_duration'],
-            target_date,  # Passar a data alvo
+            target_date,
+            min_booking_hours,
         )
 
         booked_times = await self._get_booked_times(
@@ -327,7 +289,11 @@ class Appointments:
             'available_times': available_times,
             'business_hours': business_hours[day_name],
             'total_available': len(available_times),
-            'is_today': target_date == date.today(),  # Informar se é hoje
+            'is_today': target_date == date.today(),
+            'min_booking_hours': min_booking_hours,
+            'current_time': datetime.now().strftime('%H:%M')
+            if target_date == date.today()
+            else None,
         }
 
     async def _get_booked_times(

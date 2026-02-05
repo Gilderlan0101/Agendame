@@ -411,11 +411,6 @@ class Services:
     ) -> Dict[str, Any]:
         """
         Cria serviço para o usuário logado (User ou TrialAccount).
-
-        Args:
-            service_data: Dados do serviço
-            current_user_id: ID do usuário logado
-            user_is_trial: Se True, busca na TrialAccount; se False, busca em User
         """
         try:
             # Buscar a empresa baseada no tipo de usuário
@@ -435,11 +430,13 @@ class Services:
             # Verificar se já existe serviço com mesmo nome
             if user_is_trial:
                 existing_service = await Service.filter(
-                    trial_account_id=current_user_id, name=service_data['name']
+                    trial_account=company,  # Usar a relação, não o ID
+                    name=service_data['name'],
                 ).first()
             else:
                 existing_service = await Service.filter(
-                    user_id=current_user_id, name=service_data['name']
+                    user=company,  # Usar a relação, não o ID
+                    name=service_data['name'],
                 ).first()
 
             if existing_service:
@@ -458,15 +455,22 @@ class Services:
                         detail='Formato inválido para preço',
                     )
 
-            # Preparar dados para criação baseado no tipo
+            # Preparar dados para criação
             create_data = service_data.copy()
 
+            # Configurar a relação correta (USAR AS RELAÇÕES, NÃO OS IDs DIRETOS)
             if user_is_trial:
-                create_data['trial_account_id'] = current_user_id
-                create_data['user_id'] = None  # Garante que seja nulo
+                create_data[
+                    'trial_account'
+                ] = company  # Passar o objeto TrialAccount
+                # Não definir user, deixar como None (o modelo já tem null=True)
             else:
-                create_data['user_id'] = current_user_id
-                create_data['trial_account_id'] = None  # Garante que seja nulo
+                create_data['user'] = company  # Passar o objeto User
+                # Não definir trial_account, deixar como None
+
+            # Remover campos que podem causar conflito
+            create_data.pop('user_id', None)
+            create_data.pop('trial_account_id', None)
 
             # Criar serviço
             service = await Service.create(**create_data)
