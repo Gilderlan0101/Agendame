@@ -155,6 +155,7 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
 
 # Adicione esta função no mesmo arquivo onde está login_user
 
+
 @router_login.get('/logout')
 async def logout_user(request: Request):
     """Rota para logout do usuário."""
@@ -165,7 +166,7 @@ async def logout_user(request: Request):
     # Cria resposta de redirecionamento
     response = RedirectResponse(
         url='/login?success=Logout realizado com sucesso',
-        status_code=status.HTTP_303_SEE_OTHER
+        status_code=status.HTTP_303_SEE_OTHER,
     )
 
     # Remove o cookie de autenticação
@@ -173,7 +174,7 @@ async def logout_user(request: Request):
         key='access_token',
         httponly=True,
         secure=True,  # True em produção
-        samesite='lax'
+        samesite='lax',
     )
 
     # Remove outros cookies relacionados à autenticação se existirem
@@ -181,10 +182,14 @@ async def logout_user(request: Request):
     response.delete_cookie('user_id')
 
     # Adiciona headers para evitar cache
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers[
+        'Cache-Control'
+    ] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
 
-    print(f'👋 Usuário {current_user.email if current_user else "desconhecido"} fez logout')
+    print(
+        f'👋 Usuário {current_user.email if current_user else "desconhecido"} fez logout'
+    )
 
     return response
 
@@ -200,16 +205,13 @@ async def logout_user_api(request: Request):
         status_code=status.HTTP_200_OK,
         content={
             'message': 'Logout realizado com sucesso',
-            'user': current_user.email if current_user else None
-        }
+            'user': current_user.email if current_user else None,
+        },
     )
 
     # Remove cookies
     response.delete_cookie(
-        key='access_token',
-        httponly=True,
-        secure=True,
-        samesite='lax'
+        key='access_token', httponly=True, secure=True, samesite='lax'
     )
 
     return response

@@ -6,9 +6,11 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Union
 
 from fastapi import HTTPException, status
+from tortoise.expressions import Q
 
 from app.controllers import company
 from app.controllers.company.company_data import MyCompany
+from app.models.trial import TrialAccount
 from app.models.user import (
     Appointment,
     BusinessSettings,
@@ -50,27 +52,63 @@ class Services:
                 detail='Empresa não encontrada',
             )
 
-    async def _get_company_by_name(self) -> MyCompany:
-        """Busca empresa pelo business_name ou username."""
+    async def _get_company_by_name(self) -> Optional[MyCompany]:
+        """Busca empresa pelo business_name, username ou business_slug."""
+
+        # Se não temos nenhum identificador, retorna None
+        if (
+            not self.target_company_name
+            and not self.target_company_business_slug
+        ):
+            return None
+
         user = None
 
+        # 1. Primeiro tenta na tabela User
         if self.target_company_name:
+            # Tenta por business_name
             user = await User.filter(
                 business_name=self.target_company_name
             ).first()
 
-        if not user and self.target_company_name:
-            user = await User.filter(username=self.target_company_name).first()
+            # Se não encontrou, tenta por username
+            if not user:
+                user = await User.filter(
+                    username=self.target_company_name
+                ).first()
 
+        # 2. Se ainda não encontrou e tem business_slug, tenta por slug
         if not user and self.target_company_business_slug:
             user = await User.filter(
                 business_slug=self.target_company_business_slug
             ).first()
 
-        if not user:
-            raise ValueError('Empresa não encontrada')
+        # 3. Se ainda não encontrou na tabela User, tenta na TrialAccount
+        if not user and self.target_company_name:
+            # Tenta por business_name na TrialAccount
+            user = await TrialAccount.filter(
+                business_name=self.target_company_name
+            ).first()
 
-        return await MyCompany.create(company_id=user.id)
+            # Se não encontrou, tenta por username
+            if not user:
+                user = await TrialAccount.filter(
+                    username=self.target_company_name
+                ).first()
+
+            # Se ainda não encontrou e tem slug, tenta por slug
+            if not user and self.target_company_business_slug:
+                user = await TrialAccount.filter(
+                    business_slug=self.target_company_business_slug
+                ).first()
+
+        # 4. Se encontrou algum usuário, cria MyCompany
+        if user:
+            return await MyCompany.create(company_id=user.id)
+
+        # 5. Se não encontrou em nenhuma tabela, retorna None ou levanta exceção
+        return None
+        # raise ValueError(f"Empresa não encontrada: {self.target_company_name or self.target_company_business_slug}")
 
     async def _get_company_by_slug(self) -> MyCompany:
         """Busca empresa especificamente pelo business_slug."""
@@ -79,42 +117,53 @@ class Services:
         ).first()
 
         if not user:
-            raise ValueError('Empresa não encontrada pelo slug')
+            user = await TrialAccount.filter(
+                business_slug=self.target_company_business_slug
+            ).first()
 
-        return await MyCompany.create(company_id=user.id)
+        if user:
+            return await MyCompany.create(company_id=user.id)
+        else:
+            return None
 
     async def _get_company_by_identifier(
         self, identifier: str, search_type: str = 'auto'
     ) -> MyCompany:
         """
         Método flexível para buscar empresa por diferentes identificadores.
-
-        Args:
-            identifier: String para buscar (slug, username ou business_name)
-            search_type: Como buscar: 'auto', 'slug', 'username', 'name'
         """
         user = None
 
-        if search_type == 'slug' or search_type == 'auto':
-            user = await User.filter(business_slug=identifier).first()
-            if user:
-                return await MyCompany.create(company_id=user.id)
+        # Define os campos a buscar baseado no search_type
+        if search_type == 'slug':
+            fields = ['business_slug']
+        elif search_type == 'username':
+            fields = ['username']
+        elif search_type == 'name':
+            fields = ['business_name']
+        else:  # 'auto'
+            fields = ['business_slug', 'username', 'business_name']
 
-        if search_type == 'username' or (search_type == 'auto' and not user):
-            user = await User.filter(username=identifier).first()
+        # Busca na tabela User
+        for field in fields:
+            user = await User.filter(**{field: identifier}).first()
             if user:
-                return await MyCompany.create(company_id=user.id)
+                break
 
-        if search_type == 'name' or (search_type == 'auto' and not user):
-            user = await User.filter(business_name=identifier).first()
-            if user:
-                return await MyCompany.create(company_id=user.id)
-
+        # Se não encontrou em User, busca na TrialAccount
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f'Empresa não encontrada com identificador: {identifier}',
-            )
+            for field in fields:
+                user = await TrialAccount.filter(**{field: identifier}).first()
+                if user:
+                    break
+
+        if user:
+            return await MyCompany.create(company_id=user.id)
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f'Empresa não encontrada: {identifier}',
+        )
 
     async def get_company_info(
         self, identifier: str, search_type: str = 'auto'
@@ -164,7 +213,12 @@ class Services:
         company = await self._get_company_by_identifier(
             decoded_identifier, search_type
         )
-        query = Service.filter(user_id=company.company_id())
+
+        # Filtro que considera tanto user_id quanto trial_account_id
+        query = Service.filter(
+            Q(user_id=company.company_id())
+            | Q(trial_account_id=company.company_id())
+        )
 
         if is_active is not None:
             query = query.filter(is_active=is_active)
@@ -220,7 +274,11 @@ class Services:
     ) -> List[Service]:
         """Consulta flexível de serviços."""
         company = await self._get_company()
-        query = Service.filter(user_id=company.company_id())
+        # Filtro que considera tanto user_id quanto trial_account_id
+        query = Service.filter(
+            Q(user_id=company.company_id())
+            | Q(trial_account_id=company.company_id())
+        )
 
         if is_active is not None:
             query = query.filter(is_active=is_active)
@@ -279,7 +337,9 @@ class Services:
         """Remove definitivamente um serviço da empresa."""
         company = await self._get_company()
         deleted_count = await Service.filter(
-            id=target_service_id, user_id=company.company_id()
+            Q(user_id=company.company_id())
+            | Q(trial_account_id=company.company_id()),
+            id=target_service_id,
         ).delete()
 
         if deleted_count == 0:
@@ -288,12 +348,26 @@ class Services:
                 detail='Serviço não encontrado',
             )
 
+        return {'status': 200}
+
     async def upgrade_service(
         self, target_service_id: int, schemas: UpdateServices
     ) -> dict:
         """Atualiza informações de um serviço."""
         company = await self._get_company()
-        clean_data = schemas.model_dump(exclude_none=True)
+
+        # Obter apenas os campos que foram realmente fornecidos no request
+        clean_data = schemas.model_dump(exclude_unset=True)
+
+        # Remover campos None (caso algum campo opcional tenha sido enviado como null)
+        clean_data = {k: v for k, v in clean_data.items() if v is not None}
+
+        # Remover strings vazias
+        clean_data = {
+            k: v
+            for k, v in clean_data.items()
+            if not (isinstance(v, str) and v.strip() == '')
+        }
 
         if not clean_data:
             raise HTTPException(
@@ -301,6 +375,7 @@ class Services:
                 detail='Nenhum campo válido para atualização',
             )
 
+        # Processar preço se for fornecido
         if 'price' in clean_data:
             try:
                 clean_data['price'] = Decimal(str(clean_data['price']))
@@ -310,9 +385,14 @@ class Services:
                     detail='Formato inválido para price',
                 )
 
+        # Adicionar data de atualização
         clean_data['updated_at'] = datetime.utcnow()
+
+        # Atualizar o serviço
         updated_rows = await Service.filter(
-            id=target_service_id, user_id=company.company_id()
+            Q(user_id=company.company_id())
+            | Q(trial_account_id=company.company_id()),
+            id=target_service_id,
         ).update(**clean_data)
 
         if updated_rows == 0:
@@ -322,3 +402,101 @@ class Services:
             )
 
         return {'status': 'success', 'updated_fields': list(clean_data.keys())}
+
+    async def create_service_for_current_user(
+        self,
+        service_data: Dict[str, Any],
+        current_user_id: int,
+        user_is_trial: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Cria serviço para o usuário logado (User ou TrialAccount).
+
+        Args:
+            service_data: Dados do serviço
+            current_user_id: ID do usuário logado
+            user_is_trial: Se True, busca na TrialAccount; se False, busca em User
+        """
+        try:
+            # Buscar a empresa baseada no tipo de usuário
+            if user_is_trial:
+                company = await TrialAccount.get_or_none(id=current_user_id)
+                model_name = 'TrialAccount'
+            else:
+                company = await User.get_or_none(id=current_user_id)
+                model_name = 'User'
+
+            if not company:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f'{model_name} não encontrado',
+                )
+
+            # Verificar se já existe serviço com mesmo nome
+            if user_is_trial:
+                existing_service = await Service.filter(
+                    trial_account_id=current_user_id, name=service_data['name']
+                ).first()
+            else:
+                existing_service = await Service.filter(
+                    user_id=current_user_id, name=service_data['name']
+                ).first()
+
+            if existing_service:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail='Já existe um serviço com este nome',
+                )
+
+            # Processar preço
+            if 'price' in service_data:
+                try:
+                    service_data['price'] = Decimal(str(service_data['price']))
+                except (InvalidOperation, ValueError):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail='Formato inválido para preço',
+                    )
+
+            # Preparar dados para criação baseado no tipo
+            create_data = service_data.copy()
+
+            if user_is_trial:
+                create_data['trial_account_id'] = current_user_id
+                create_data['user_id'] = None  # Garante que seja nulo
+            else:
+                create_data['user_id'] = current_user_id
+                create_data['trial_account_id'] = None  # Garante que seja nulo
+
+            # Criar serviço
+            service = await Service.create(**create_data)
+
+            return {
+                'status': 'success',
+                'message': 'Serviço criado com sucesso!',
+                'service': {
+                    'id': service.id,
+                    'name': service.name,
+                    'description': service.description,
+                    'price': str(service.price) if service.price else '0.00',
+                    'duration_minutes': service.duration_minutes,
+                    'order': service.order,
+                    'is_active': service.is_active,
+                    'created_at': service.created_at.isoformat()
+                    if service.created_at
+                    else None,
+                    'updated_at': service.updated_at.isoformat()
+                    if service.updated_at
+                    else None,
+                },
+            }
+
+        except Exception as e:
+            print(f'Erro detalhado ao criar serviço: {str(e)}')
+            import traceback
+
+            traceback.print_exc()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f'Erro ao criar serviço: {str(e)}',
+            )

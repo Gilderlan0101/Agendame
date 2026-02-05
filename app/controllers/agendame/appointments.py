@@ -6,9 +6,11 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Union
 
 from fastapi import HTTPException, status
+from tortoise.expressions import Q
 
 from app.controllers.agendame.services import Services
 from app.controllers.company.company_data import MyCompany
+from app.models.trial import TrialAccount
 from app.models.user import (
     Appointment,
     BusinessSettings,
@@ -33,14 +35,72 @@ class Appointments:
             target_company_name=target_company_name,
             target_company_business_slug=target_company_business_slug,
         )
+        self._company_type = None  # 'user' ou 'trial'
 
     async def _get_company(self) -> MyCompany:
-        """Reutiliza o método da classe Services."""
-        return await self.services_domain._get_company()
+        """Reutiliza o método da classe Services e determina o tipo."""
+        company = await self.services_domain._get_company()
+
+        # Determinar se é User ou TrialAccount
+        user_exists = await User.filter(id=company.company_id()).exists()
+        if user_exists:
+            self._company_type = 'user'
+        else:
+            trial_exists = await TrialAccount.filter(
+                id=company.company_id()
+            ).exists()
+            if trial_exists:
+                self._company_type = 'trial'
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail='Empresa não encontrada',
+                )
+
+        return company
+
+    async def _get_company_model(self):
+        """Retorna o modelo da empresa (User ou TrialAccount)."""
+        if not self._company_type:
+            await self._get_company()
+
+        company = await self._get_company()
+        company_id = company.company_id()
+
+        if self._company_type == 'user':
+            return await User.get_or_none(id=company_id)
+        else:
+            return await TrialAccount.get_or_none(id=company_id)
+
+    async def _get_business_hours(self, company_id: int) -> Dict:
+        """Obtém horários de funcionamento da empresa."""
+        # Tenta buscar em User
+        user = await User.get_or_none(id=company_id)
+        if user:
+            return user.business_hours
+
+        # Se não encontrou, tenta em TrialAccount
+        trial = await TrialAccount.get_or_none(id=company_id)
+        if trial:
+            return trial.business_hours
+
+        # Retorna padrão se não encontrar
+        return {
+            'monday': {'open': '09:00', 'close': '18:00'},
+            'tuesday': {'open': '09:00', 'close': '18:00'},
+            'wednesday': {'open': '09:00', 'close': '18:00'},
+            'thursday': {'open': '09:00', 'close': '18:00'},
+            'friday': {'open': '09:00', 'close': '18:00'},
+            'saturday': {'open': '09:00', 'close': '17:00'},
+            'sunday': {'open': None, 'close': None},
+        }
 
     async def _get_business_settings(self, company_id: int) -> Dict:
         """Obtém configurações da empresa."""
-        settings = await BusinessSettings.filter(user_id=company_id).first()
+        settings = await BusinessSettings.filter(
+            Q(user_id=company_id) | Q(trial_account_id=company_id)
+        ).first()
+
         if settings:
             return {
                 'time_slot_duration': settings.time_slot_duration or 60,
@@ -55,6 +115,139 @@ class Appointments:
             'min_booking_hours': 1,
             'max_booking_days': 30,
         }
+
+    def _generate_time_slots(
+        self,
+        open_time: str,
+        close_time: str,
+        slot_duration: int,
+        target_date: Optional[date] = None,  # Adicionar data alvo
+    ) -> List[str]:
+        """Gera todos os slots de tempo possíveis, filtrando horários passados."""
+        print(
+            f'DEBUG _generate_time_slots: open_time={open_time}, close_time={close_time}, slot_duration={slot_duration}, target_date={target_date}'
+        )
+
+        if not open_time or not close_time:
+            print('DEBUG: Horário de abertura/fechamento vazio')
+            return []
+
+        slots = []
+        try:
+            current_slot = datetime.strptime(open_time, '%H:%M')
+            end = datetime.strptime(close_time, '%H:%M')
+
+            # Se for hoje, obter hora atual
+            current_time = None
+            if target_date and target_date == date.today():
+                now = datetime.now()
+                current_time = now.time()
+                print(f'DEBUG: É hoje! Hora atual: {current_time}')
+
+            print(
+                f'DEBUG: Primeiro slot: {current_slot.time()}, último possível: {end.time()}'
+            )
+
+            while current_slot + timedelta(minutes=slot_duration) <= end:
+                slot_time_str = current_slot.strftime('%H:%M')
+                slot_time_obj = current_slot.time()
+
+                # Se for hoje, filtrar horários que já passaram
+                if target_date == date.today() and current_time:
+                    # Adicionar margem de segurança (ex: não permitir agendamento para menos de 1 hora)
+                    min_booking_hours = (
+                        1  # Pode ser ajustável nas configurações
+                    )
+                    min_time = (
+                        datetime.now() + timedelta(hours=min_booking_hours)
+                    ).time()
+
+                    print(
+                        f'DEBUG: Slot {slot_time_str} - Hora atual: {current_time}, Hora mínima: {min_time}'
+                    )
+
+                    if slot_time_obj >= min_time:
+                        slots.append(slot_time_str)
+                        print(
+                            f'DEBUG: Slot {slot_time_str} ACEITO (após hora mínima)'
+                        )
+                    else:
+                        print(
+                            f'DEBUG: Slot {slot_time_str} REJEITADO (antes da hora mínima)'
+                        )
+                else:
+                    # Se não for hoje, aceitar todos os slots
+                    slots.append(slot_time_str)
+                    print(f'DEBUG: Slot {slot_time_str} ACEITO (não é hoje)')
+
+                current_slot += timedelta(minutes=slot_duration)
+
+            print(f'DEBUG: Slots gerados: {slots}')
+
+        except ValueError as e:
+            print(f'DEBUG: Erro ao parse horários: {e}')
+            return []
+
+        return slots
+
+    def _filter_available_slots(
+        self,
+        all_slots: List[str],
+        booked_slots: List[str],
+        service_duration: int,
+        max_daily: int,
+    ) -> List[str]:
+        """Filtra slots disponíveis considerando duração do serviço."""
+        print(f'DEBUG _filter_available_slots:')
+        print(f'  - Total slots: {len(all_slots)}')
+        print(f'  - Slots agendados: {booked_slots}')
+        print(f'  - Duração serviço: {service_duration} min')
+        print(f'  - Máximo diário: {max_daily}')
+
+        if len(booked_slots) >= max_daily:
+            print('DEBUG: Limite diário atingido')
+            return []
+
+        available = []
+        for slot in all_slots:
+            try:
+                slot_time = datetime.strptime(slot, '%H:%M')
+
+                if slot not in booked_slots:
+                    is_available = True
+
+                    # Verificar conflito com horários já agendados
+                    for booked in booked_slots:
+                        try:
+                            booked_time = datetime.strptime(booked, '%H:%M')
+                            time_diff = abs(
+                                (slot_time - booked_time).total_seconds() / 60
+                            )
+
+                            if time_diff < service_duration:
+                                print(
+                                    f'DEBUG: Slot {slot} conflita com {booked} (diferença: {time_diff} min)'
+                                )
+                                is_available = False
+                                break
+                        except ValueError:
+                            print(
+                                f'DEBUG: Erro ao parse booked time: {booked}'
+                            )
+                            continue
+
+                    if is_available:
+                        available.append(slot)
+                        print(f'DEBUG: Slot {slot} disponível')
+                else:
+                    print(f'DEBUG: Slot {slot} já agendado')
+
+            except ValueError:
+                print(f'DEBUG: Erro ao parse slot: {slot}')
+                continue
+
+        print(f'DEBUG: Slots disponíveis finais: {available}')
+        return available
 
     async def get_available_times(
         self,
@@ -74,9 +267,14 @@ class Appointments:
             company = await self._get_company()
 
         company_id = company.company_id()
+
+        # Busca serviço considerando tanto user_id quanto trial_account_id
         service = await Service.filter(
-            id=service_id, user_id=company_id
+            Q(user_id=company_id) | Q(trial_account_id=company_id),
+            id=service_id,
+            is_active=True,
         ).first()
+
         if not service:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -84,13 +282,13 @@ class Appointments:
             )
 
         settings = await self._get_business_settings(company_id)
-        user = await User.filter(id=company_id).first()
-        business_hours = user.business_hours if user else None
+        business_hours = await self._get_business_hours(company_id)
 
         day_name = target_date.strftime('%A').lower()
+
         if (
-            day_name not in business_hours  # type:ignore
-            or not business_hours[day_name]['open']  # type:ignore
+            day_name not in business_hours
+            or not business_hours[day_name]['open']
         ):
             return {
                 'date': target_date.isoformat(),
@@ -99,15 +297,18 @@ class Appointments:
                 'message': 'Empresa não funciona neste dia',
             }
 
+        # MODIFICAÇÃO AQUI: Passar target_date para a função
         all_time_slots = self._generate_time_slots(
-            business_hours[day_name]['open'],  # type:ignore
-            business_hours[day_name]['close'],  # type:ignore
+            business_hours[day_name]['open'],
+            business_hours[day_name]['close'],
             settings['time_slot_duration'],
+            target_date,  # Passar a data alvo
         )
 
         booked_times = await self._get_booked_times(
             company_id, target_date, service_id
         )
+
         available_times = self._filter_available_slots(
             all_time_slots,
             booked_times,
@@ -124,73 +325,23 @@ class Appointments:
                 'price': str(service.price),
             },
             'available_times': available_times,
-            'business_hours': business_hours[day_name]
-            if business_hours[day_name]
-            else 'N/A',  # type:ignore
+            'business_hours': business_hours[day_name],
             'total_available': len(available_times),
+            'is_today': target_date == date.today(),  # Informar se é hoje
         }
-
-    def _generate_time_slots(
-        self, open_time: str, close_time: str, slot_duration: int
-    ) -> List[str]:
-        """Gera todos os slots de tempo possíveis."""
-        if not open_time or not close_time:
-            return []
-
-        slots = []
-        current = datetime.strptime(open_time, '%H:%M')
-        end = datetime.strptime(close_time, '%H:%M')
-
-        while current + timedelta(minutes=slot_duration) <= end:
-            slots.append(current.strftime('%H:%M'))
-            current += timedelta(minutes=slot_duration)
-
-        return slots
 
     async def _get_booked_times(
         self, company_id: int, target_date: date, service_id: int
     ) -> List[str]:
         """Obtém horários já agendados."""
         appointments = await Appointment.filter(
-            user_id=company_id,
+            Q(user_id=company_id) | Q(trial_account_id=company_id),
             appointment_date=target_date,
             service_id=service_id,
             status__in=['scheduled', 'confirmed'],
         ).values('appointment_time')
 
         return [appt['appointment_time'] for appt in appointments]
-
-    def _filter_available_slots(
-        self,
-        all_slots: List[str],
-        booked_slots: List[str],
-        service_duration: int,
-        max_daily: int,
-    ) -> List[str]:
-        """Filtra slots disponíveis considerando duração do serviço."""
-        if len(booked_slots) >= max_daily:
-            return []
-
-        available = []
-        for slot in all_slots:
-            slot_time = datetime.strptime(slot, '%H:%M')
-
-            if slot not in booked_slots:
-                is_available = True
-                for booked in booked_slots:
-                    booked_time = datetime.strptime(booked, '%H:%M')
-                    time_diff = abs(
-                        (slot_time - booked_time).total_seconds() / 60
-                    )
-
-                    if time_diff < service_duration:
-                        is_available = False
-                        break
-
-                if is_available:
-                    available.append(slot)
-
-        return available
 
     async def create_appointment(
         self,
@@ -214,8 +365,12 @@ class Appointments:
             company = await self._get_company()
 
         company_id = company.company_id()
+
+        # Busca serviço considerando ambos os tipos
         service = await Service.filter(
-            id=service_id, user_id=company_id, is_active=True
+            Q(user_id=company_id) | Q(trial_account_id=company_id),
+            id=service_id,
+            is_active=True,
         ).first()
 
         if not service:
@@ -238,36 +393,49 @@ class Appointments:
             company_id, client_name, client_phone
         )
 
-        appointment = await Appointment.create(
-            user_id=company_id,
-            client_id=client.id if client else None,
-            service_id=service_id,
-            appointment_date=appointment_date,
-            appointment_time=appointment_time,
-            client_name=client_name,
-            client_phone=client_phone,
-            price=service.price,
-            status='scheduled',
-            notes=notes,
-            whatsapp_sent=False,
-        )
+        # Preparar dados do agendamento baseado no tipo
+        appointment_data = {
+            'client_id': client.id if client else None,
+            'service_id': service_id,
+            'appointment_date': appointment_date,
+            'appointment_time': appointment_time,
+            'client_name': client_name,
+            'client_phone': client_phone,
+            'price': service.price,
+            'status': 'scheduled',
+            'notes': notes,
+            'whatsapp_sent': False,
+        }
+
+        # Adicionar relação correta
+        if self._company_type == 'user':
+            appointment_data['user_id'] = company_id
+            appointment_data['trial_account_id'] = None
+        else:
+            appointment_data['trial_account_id'] = company_id
+            appointment_data['user_id'] = None
+
+        appointment = await Appointment.create(**appointment_data)
 
         if client:
             client.total_appointments += 1
             await client.save()
 
-        company_info = await User.filter(id=company_id).first()
+        # Buscar informações da empresa
+        company_model = await self._get_company_model()
 
         return {
             'success': True,
             'appointment_id': appointment.id,
             'confirmation': {
                 'company': {
-                    'name': company_info.business_name
-                    if company_info
+                    'name': company_model.business_name
+                    if company_model
                     else 'Salão',
-                    'phone': company_info.phone if company_info else '',
-                    'whatsapp': company_info.whatsapp if company_info else '',
+                    'phone': company_model.phone if company_model else '',
+                    'whatsapp': company_model.whatsapp
+                    if company_model
+                    else '',
                 },
                 'client': {'name': client_name, 'phone': client_phone},
                 'service': {
@@ -288,7 +456,10 @@ class Appointments:
         self, company_id: int, name: str, phone: str
     ):
         """Busca ou cria um cliente."""
-        client = await Client.filter(user_id=company_id, phone=phone).first()
+        # Buscar cliente considerando ambos os tipos
+        client = await Client.filter(
+            Q(user_id=company_id) | Q(trial_account_id=company_id), phone=phone
+        ).first()
 
         if client:
             if client.full_name != name:
@@ -296,14 +467,22 @@ class Appointments:
                 await client.save()
             return client
 
-        client = await Client.create(
-            user_id=company_id,
-            full_name=name,
-            phone=phone,
-            total_appointments=0,
-            is_active=True,
-        )
+        # Preparar dados do cliente baseado no tipo
+        client_data = {
+            'full_name': name,
+            'phone': phone,
+            'total_appointments': 0,
+            'is_active': True,
+        }
 
+        if self._company_type == 'user':
+            client_data['user_id'] = company_id
+            client_data['trial_account_id'] = None
+        else:
+            client_data['trial_account_id'] = company_id
+            client_data['user_id'] = None
+
+        client = await Client.create(**client_data)
         return client
 
     async def get_company_appointments(
@@ -318,7 +497,10 @@ class Appointments:
         company = await self._get_company()
         company_id = company.company_id()
 
-        query = Appointment.filter(user_id=company_id)
+        # Filtra por user_id OU trial_account_id
+        query = Appointment.filter(
+            Q(user_id=company_id) | Q(trial_account_id=company_id)
+        )
 
         if start_date:
             query = query.filter(appointment_date__gte=start_date)
@@ -345,10 +527,10 @@ class Appointments:
                     'client': {
                         'name': apt.client_name,
                         'phone': apt.client_phone,
-                        'client_id': apt.client_id,  # type:ignore
+                        'client_id': apt.client_id,
                     },
                     'service': {
-                        'id': apt.service_id,  # type:ignore
+                        'id': apt.service_id,
                         'name': apt.service.name
                         if apt.service
                         else 'Serviço não encontrado',
@@ -366,20 +548,19 @@ class Appointments:
 
     async def update_one_appointments(self, target_appointment: int, schema):
         """Atualizar informações de um agendamento já cadastrado."""
-
         company_data = await self._get_company()
         company_id = company_data.company_id()
 
-        # Buscar o agendamento com status 'scheduled' (Agendado)
+        # Buscar o agendamento considerando ambos os tipos
         search_appointment = await Appointment.filter(
-            user_id=company_id,
+            Q(user_id=company_id) | Q(trial_account_id=company_id),
             id=target_appointment,
         ).first()
 
         if not search_appointment:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Agendamento não encontrado ou status não é 'Agendado'",
+                detail='Agendamento não encontrado',
             )
 
         try:
@@ -395,7 +576,9 @@ class Appointments:
             if schema.service_id is not None:
                 # Verificar se o serviço pertence à empresa
                 service = await Service.filter(
-                    id=schema.service_id, user_id=company_id, is_active=True
+                    Q(user_id=company_id) | Q(trial_account_id=company_id),
+                    id=schema.service_id,
+                    is_active=True,
                 ).first()
                 if not service:
                     raise HTTPException(
@@ -403,7 +586,6 @@ class Appointments:
                         detail='Serviço não encontrado ou indisponível',
                     )
                 update_data['service_id'] = schema.service_id
-                # Atualizar o preço se o serviço for alterado
                 update_data['price'] = service.price
 
             if schema.appointment_date is not None:
@@ -413,7 +595,13 @@ class Appointments:
                 update_data['appointment_time'] = schema.appointment_time
 
             if schema.price is not None:
-                update_data['price'] = schema.price
+                try:
+                    update_data['price'] = Decimal(str(schema.price))
+                except (InvalidOperation, ValueError):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail='Formato inválido para preço',
+                    )
 
             if schema.status is not None:
                 update_data['status'] = schema.status
@@ -431,14 +619,12 @@ class Appointments:
                     schema.appointment_time
                     or search_appointment.appointment_time
                 )
-                service_id = (
-                    schema.service_id or search_appointment.service_id
-                )   # type: ignore
+                service_id = schema.service_id or search_appointment.service_id
 
-                # Verificar se o novo horário está disponível (exceto para o próprio agendamento)
+                # Verificar se o novo horário está disponível
                 existing = (
                     await Appointment.filter(
-                        user_id=company_id,
+                        Q(user_id=company_id) | Q(trial_account_id=company_id),
                         appointment_date=appointment_date,
                         appointment_time=appointment_time,
                         service_id=service_id,
@@ -455,8 +641,9 @@ class Appointments:
                     )
 
             # Atualizar o agendamento
+            update_data['updated_at'] = datetime.utcnow()
             await Appointment.filter(id=target_appointment).update(
-                **update_data, updated_at=datetime.utcnow()
+                **update_data
             )
 
             # Buscar o agendamento atualizado
@@ -470,35 +657,42 @@ class Appointments:
             if (
                 schema.client_phone is not None
                 and updated_appointment.client_id
-            ):   # type: ignore
+            ):
                 client = await Client.filter(
                     id=updated_appointment.client_id
-                ).first()   # type: ignore
+                ).first()
                 if client and client.phone != schema.client_phone:
-                    # Criar novo cliente ou atualizar existente
+                    # Buscar cliente existente com novo telefone
                     new_client = await Client.filter(
-                        user_id=company_id, phone=schema.client_phone
+                        Q(user_id=company_id) | Q(trial_account_id=company_id),
+                        phone=schema.client_phone,
                     ).first()
 
                     if new_client:
-                        # Atualizar agendamento com novo cliente
                         await Appointment.filter(id=target_appointment).update(
                             client_id=new_client.id
                         )
-                        # Atualizar nome se fornecido
                         if schema.client_name:
                             new_client.full_name = schema.client_name
                             await new_client.save()
                     else:
                         # Criar novo cliente
-                        new_client = await Client.create(
-                            user_id=company_id,
-                            full_name=schema.client_name
+                        new_client_data = {
+                            'full_name': schema.client_name
                             or search_appointment.client_name,
-                            phone=schema.client_phone,
-                            total_appointments=1,
-                            is_active=True,
-                        )
+                            'phone': schema.client_phone,
+                            'total_appointments': 1,
+                            'is_active': True,
+                        }
+
+                        if self._company_type == 'user':
+                            new_client_data['user_id'] = company_id
+                            new_client_data['trial_account_id'] = None
+                        else:
+                            new_client_data['trial_account_id'] = company_id
+                            new_client_data['user_id'] = None
+
+                        new_client = await Client.create(**new_client_data)
                         await Appointment.filter(id=target_appointment).update(
                             client_id=new_client.id
                         )
@@ -508,15 +702,17 @@ class Appointments:
                 'message': 'Agendamento atualizado com sucesso',
                 'appointment': {
                     'id': updated_appointment.id,
-                    'client_name': updated_appointment.client_name,  # type: ignore
-                    'client_phone': updated_appointment.client_phone,  # type: ignore
-                    'service_id': updated_appointment.service_id,  # type: ignore
-                    'service_name': updated_appointment.service.name if updated_appointment.service else None,  # type: ignore
-                    'appointment_date': updated_appointment.appointment_date,  # type: ignore
-                    'appointment_time': updated_appointment.appointment_time,  # type: ignore
-                    'price': str(updated_appointment.price),  # type: ignore
-                    'status': updated_appointment.status,  # type: ignore
-                    'notes': updated_appointment.notes,  # type: ignore
+                    'client_name': updated_appointment.client_name,
+                    'client_phone': updated_appointment.client_phone,
+                    'service_id': updated_appointment.service_id,
+                    'service_name': updated_appointment.service.name
+                    if updated_appointment.service
+                    else None,
+                    'appointment_date': updated_appointment.appointment_date.isoformat(),
+                    'appointment_time': updated_appointment.appointment_time,
+                    'price': str(updated_appointment.price),
+                    'status': updated_appointment.status,
+                    'notes': updated_appointment.notes,
                 },
             }
 

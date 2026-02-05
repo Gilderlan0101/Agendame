@@ -26,87 +26,44 @@ async def get_company_appointments(
     """
     Busca agendamentos da empresa do usuário logado.
     Pode filtrar por data, status, cliente ou serviço.
-
-    Exemplo de body:
-    ```json
-    {
-        "start_date": "2024-01-15",
-        "end_date": "2024-01-20",
-        "status": "scheduled",
-        "offset": 0,
-        "limit": 50
-    }
-    ```
     """
     try:
-        # Construir query base
-        query = Q(user_id=current_user.id)
+        # Usar o controlador de Appointments
+        appointments_domain = Appointments(target_company_id=current_user.id)
 
-        # Aplicar filtros de data
-        if filter_data.start_date:
-            query &= Q(appointment_date__gte=filter_data.start_date)
-
-        if filter_data.end_date:
-            query &= Q(appointment_date__lte=filter_data.end_date)
-
-        # Aplicar filtro de status
-        if filter_data.status:
-            query &= Q(status=filter_data.status)
-
-        # Aplicar filtro de cliente (busca por nome)
-        if filter_data.client_name:
-            query &= Q(client_name__icontains=filter_data.client_name)
-
-        # Aplicar filtro de serviço
-        if filter_data.service_id:
-            query &= Q(service_id=filter_data.service_id)
-
-        # Contar total (sem paginação)
-        total = await Appointment.filter(query).count()
-
-        # Buscar agendamentos com paginação e relacionamentos
-        appointments = (
-            await Appointment.filter(query)
-            .select_related('service', 'client')
-            .order_by('-appointment_date', '-appointment_time')
-            .offset(filter_data.offset)
-            .limit(filter_data.limit)
-            .all()
+        # Usar o método da classe Appointments
+        appointments_list = await appointments_domain.get_company_appointments(
+            start_date=filter_data.start_date,
+            end_date=filter_data.end_date,
+            status=filter_data.status,
         )
 
-        # Formatar resposta
-        appointments_list = []
-        for apt in appointments:
-            appointments_list.append(
-                {
-                    'id': apt.id,
-                    'date': apt.appointment_date.isoformat()
-                    if apt.appointment_date
-                    else None,
-                    'time': apt.appointment_time,
-                    'client': {
-                        'id': apt.client_id,
-                        'name': apt.client_name,
-                        'phone': apt.client_phone,
-                        'client_id': apt.client_id,
-                    },
-                    'service': {
-                        'id': apt.service_id,
-                        'name': apt.service.name
-                        if apt.service
-                        else 'Serviço não encontrado',
-                        'price': str(apt.price) if apt.price else '0.00',
-                    },
-                    'status': apt.status,
-                    'notes': apt.notes,
-                    'created_at': apt.created_at.isoformat()
-                    if apt.created_at
-                    else None,
-                }
-            )
+        # Aplicar filtros adicionais que não estão no método da classe
+        filtered_appointments = []
+        for apt in appointments_list:
+            # Filtro de cliente (busca por nome)
+            if filter_data.client_name:
+                if (
+                    filter_data.client_name.lower()
+                    not in apt['client']['name'].lower()
+                ):
+                    continue
+
+            # Filtro de serviço
+            if filter_data.service_id:
+                if apt['service']['id'] != filter_data.service_id:
+                    continue
+
+            filtered_appointments.append(apt)
+
+        # Paginação
+        total = len(filtered_appointments)
+        paginated_appointments = filtered_appointments[
+            filter_data.offset : filter_data.offset + filter_data.limit
+        ]
 
         return {
-            'appointments': appointments_list,
+            'appointments': paginated_appointments,
             'total': total,
             'offset': filter_data.offset,
             'limit': filter_data.limit,
@@ -132,48 +89,13 @@ async def get_today_appointments(
     Busca agendamentos de hoje da empresa.
     """
     try:
+        # Usar o controlador de Appointments
+        appointments_domain = Appointments(target_company_id=current_user.id)
+
         today = date.today()
-
-        query = Q(user_id=current_user.id) & Q(appointment_date=today)
-
-        if status_filter:
-            query &= Q(status=status_filter)
-
-        appointments = (
-            await Appointment.filter(query)
-            .select_related('service', 'client')
-            .order_by('appointment_time')
-            .all()
+        appointments_list = await appointments_domain.get_company_appointments(
+            start_date=today, end_date=today, status=status_filter
         )
-
-        appointments_list = []
-        for apt in appointments:
-            appointments_list.append(
-                {
-                    'id': apt.id,
-                    'date': apt.appointment_date.isoformat()
-                    if apt.appointment_date
-                    else None,
-                    'time': apt.appointment_time,
-                    'client': {
-                        'id': apt.client_id,
-                        'name': apt.client_name,
-                        'phone': apt.client_phone,
-                    },
-                    'service': {
-                        'id': apt.service_id,
-                        'name': apt.service.name
-                        if apt.service
-                        else 'Serviço não encontrado',
-                        'price': str(apt.price) if apt.price else '0.00',
-                    },
-                    'status': apt.status,
-                    'notes': apt.notes,
-                    'created_at': apt.created_at.isoformat()
-                    if apt.created_at
-                    else None,
-                }
-            )
 
         return {
             'appointments': appointments_list,
@@ -189,6 +111,33 @@ async def get_today_appointments(
         )
 
 
+@router.get('/agendame/appointments/available-times')
+async def get_available_times(
+    service_id: int,
+    date: date = Query(..., description='Data para verificar disponibilidade'),
+    current_user: SystemUser = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Retorna horários disponíveis para um serviço em uma data específica.
+    """
+    try:
+        appointments_domain = Appointments(target_company_id=current_user.id)
+
+        result = await appointments_domain.get_available_times(
+            service_id=service_id, target_date=date
+        )
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Erro ao buscar horários disponíveis: {str(e)}',
+        )
+
+
 @router.post(
     '/agendame/appointments/create', response_model=AppointmentCreatedResponse
 )
@@ -200,94 +149,32 @@ async def create_appointment_internal(
     Cria um novo agendamento internamente (pelo painel da empresa).
     """
     try:
-        # Verificar se o serviço existe e pertence à empresa
-        service = await Service.filter(
-            id=appointment_data.service_id,
-            user_id=current_user.id,
-            is_active=True,
-        ).first()
+        # Usar o controlador de Appointments
+        appointments_domain = Appointments(target_company_id=current_user.id)
 
-        if not service:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Serviço não encontrado ou indisponível',
-            )
-
-        # Verificar se já existe cliente com este telefone
-        client = await Client.filter(
-            user_id=current_user.id, phone=appointment_data.client_phone
-        ).first()
-
-        # Se não existir, criar novo cliente
-        if not client:
-            client = await Client.create(
-                user_id=current_user.id,
-                full_name=appointment_data.client_name,
-                phone=appointment_data.client_phone,
-                total_appointments=1,
-                is_active=True,
-            )
-        else:
-            # Atualizar nome se necessário
-            if client.full_name != appointment_data.client_name:
-                client.full_name = appointment_data.client_name
-                await client.save()
-
-            # Incrementar contador de agendamentos
-            client.total_appointments += 1
-            await client.save()
-
-        # Verificar disponibilidade do horário
-        existing_appointment = await Appointment.filter(
-            user_id=current_user.id,
-            appointment_date=appointment_data.appointment_date,
-            appointment_time=appointment_data.appointment_time,
-            status__in=['scheduled', 'confirmed'],
-        ).first()
-
-        if existing_appointment:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail='Horário já ocupado',
-            )
-
-        # Criar o agendamento
-        appointment = await Appointment.create(
-            user_id=current_user.id,
-            client_id=client.id,
-            service_id=service.id,
+        # Criar agendamento usando o método da classe
+        result = await appointments_domain.create_appointment(
+            service_id=appointment_data.service_id,
             appointment_date=appointment_data.appointment_date,
             appointment_time=appointment_data.appointment_time,
             client_name=appointment_data.client_name,
             client_phone=appointment_data.client_phone,
-            price=service.price,
-            status='scheduled',
             notes=appointment_data.notes,
-            whatsapp_sent=False,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
         )
 
-        # Buscar dados do usuário para resposta
-        user = await User.filter(id=current_user.id).first()
-
         return {
-            'id': appointment.id,
-            'client_name': appointment.client_name,
-            'client_phone': appointment.client_phone,
-            'service_name': service.name,
-            'appointment_date': appointment.appointment_date,
-            'appointment_time': appointment.appointment_time,
-            'price': service.price,
-            'status': appointment.status,
-            'confirmation_code': f'AGD{appointment.id:06d}',
-            'message': (
-                f'✅ Agendamento criado com sucesso!\n'
-                f'Cliente: {appointment.client_name}\n'
-                f'Serviço: {service.name}\n'
-                f"Data: {appointment.appointment_date.strftime('%d/%m/%Y')} às {appointment.appointment_time}\n"
-                f'Valor: R$ {service.price}'
-            ),
+            'id': result['appointment_id'],
+            'client_name': appointment_data.client_name,
+            'client_phone': appointment_data.client_phone,
+            'service_name': result['confirmation']['service']['name'],
+            'appointment_date': appointment_data.appointment_date,
+            'appointment_time': appointment_data.appointment_time,
+            'price': result['confirmation']['service']['price'],
+            'status': 'scheduled',
+            'confirmation_code': result['confirmation']['appointment'][
+                'confirmation_code'
+            ],
+            'message': result['confirmation']['message'],
         }
 
     except HTTPException:
@@ -296,6 +183,81 @@ async def create_appointment_internal(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f'Erro ao criar agendamento: {str(e)}',
+        )
+
+
+@router.post('/agendame/appointments/public/create')
+async def create_public_appointment(
+    service_id: int,
+    appointment_date: date,
+    appointment_time: str,
+    client_name: str,
+    client_phone: str,
+    company_slug: str = Query(..., description='Slug da empresa'),
+    notes: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Cria um agendamento público (pelo site da empresa).
+    Não requer autenticação.
+    """
+    try:
+        # Usar o controlador de Appointments com identificador da empresa
+        appointments_domain = Appointments(
+            target_company_business_slug=company_slug
+        )
+
+        result = await appointments_domain.create_appointment(
+            service_id=service_id,
+            appointment_date=appointment_date,
+            appointment_time=appointment_time,
+            client_name=client_name,
+            client_phone=client_phone,
+            identifier=company_slug,
+            search_type='slug',
+            notes=notes,
+        )
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Erro ao criar agendamento: {str(e)}',
+        )
+
+
+@router.get('/agendame/appointments/public/available-times')
+async def get_public_available_times(
+    service_id: int,
+    date: date,
+    company_slug: str = Query(..., description='Slug da empresa'),
+) -> Dict[str, Any]:
+    """
+    Retorna horários disponíveis para agendamento público.
+    Não requer autenticação.
+    """
+    try:
+        appointments_domain = Appointments(
+            target_company_business_slug=company_slug
+        )
+
+        result = await appointments_domain.get_available_times(
+            service_id=service_id,
+            target_date=date,
+            identifier=company_slug,
+            search_type='slug',
+        )
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Erro ao buscar horários disponíveis: {str(e)}',
         )
 
 
@@ -324,16 +286,28 @@ async def update_appointment_status(
                 detail=f"Status inválido. Use: {', '.join(valid_statuses)}",
             )
 
-        # Buscar e atualizar agendamento
-        updated = await Appointment.filter(
-            id=appointment_id, user_id=current_user.id
-        ).update(status=status, updated_at=datetime.utcnow())
+        # Usar o controlador de Appointments
+        appointments_domain = Appointments(target_company_id=current_user.id)
 
-        if updated == 0:
+        # Buscar agendamento para verificar se existe
+        appointments_list = (
+            await appointments_domain.get_company_appointments()
+        )
+        appointment_exists = any(
+            apt['id'] == appointment_id for apt in appointments_list
+        )
+
+        if not appointment_exists:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail='Agendamento não encontrado',
             )
+
+        # Atualizar status
+        update_data = UpdateAppointmentSchema(status=status)
+        result = await appointments_domain.update_one_appointments(
+            target_appointment=appointment_id, schema=update_data
+        )
 
         return {
             'success': True,
@@ -360,15 +334,20 @@ async def delete_appointment(
     Remove um agendamento.
     """
     try:
-        deleted = await Appointment.filter(
-            id=appointment_id, user_id=current_user.id
-        ).delete()
+        # Buscar agendamento
+        appointment = await Appointment.filter(
+            Q(user_id=current_user.id) | Q(trial_account_id=current_user.id),
+            id=appointment_id,
+        ).first()
 
-        if deleted == 0:
+        if not appointment:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail='Agendamento não encontrado',
             )
+
+        # Deletar agendamento
+        await appointment.delete()
 
         return {
             'success': True,
@@ -393,7 +372,6 @@ async def update_appointment(
 ) -> Dict[str, Any]:
     """
     Atualiza um agendamento existente.
-    Apenas agendamentos com status 'scheduled' podem ser atualizados.
     """
     try:
         appointments_domain = Appointments(target_company_id=current_user.id)
@@ -410,4 +388,77 @@ async def update_appointment(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f'Erro ao atualizar agendamento: {str(e)}',
+        )
+
+
+@router.get('/agendame/appointments/{appointment_id}')
+async def get_appointment_details(
+    appointment_id: int,
+    current_user: SystemUser = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Busca detalhes de um agendamento específico.
+    """
+    try:
+        appointments_domain = Appointments(target_company_id=current_user.id)
+
+        appointments_list = (
+            await appointments_domain.get_company_appointments()
+        )
+        appointment = next(
+            (apt for apt in appointments_list if apt['id'] == appointment_id),
+            None,
+        )
+
+        if not appointment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Agendamento não encontrado',
+            )
+
+        return appointment
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Erro ao buscar detalhes do agendamento: {str(e)}',
+        )
+
+
+@router.get('/agendame/appointments/upcoming')
+async def get_upcoming_appointments(
+    days: int = Query(7, description='Número de dias a frente'),
+    current_user: SystemUser = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Busca agendamentos dos próximos dias.
+    """
+    try:
+        appointments_domain = Appointments(target_company_id=current_user.id)
+
+        today = date.today()
+        end_date = today + timedelta(days=days)
+
+        appointments_list = await appointments_domain.get_company_appointments(
+            start_date=today, end_date=end_date
+        )
+
+        # Filtrar apenas agendamentos futuros ou de hoje
+        filtered_appointments = []
+        for apt in appointments_list:
+            apt_date = date.fromisoformat(apt['date'].split('T')[0])
+            if apt_date >= today:
+                filtered_appointments.append(apt)
+
+        return {
+            'appointments': filtered_appointments,
+            'total': len(filtered_appointments),
+            'start_date': today.isoformat(),
+            'end_date': end_date.isoformat(),
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Erro ao buscar agendamentos futuros: {str(e)}',
         )

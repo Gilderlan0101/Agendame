@@ -3,12 +3,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
-from fastapi.responses import JSONResponse
-
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import AuthMiddleware
@@ -99,7 +98,7 @@ class Server:
         self.app.mount('/static', static_files, name='static')
 
         # Middleware para MIME types
-       # No seu main.py, modifique a função add_mime_type_header:
+        # No seu main.py, modifique a função add_mime_type_header:
         @self.app.middleware('http')
         async def add_mime_type_header(request: Request, call_next):
             try:
@@ -116,14 +115,17 @@ class Server:
                 return response
 
             except RuntimeError as e:
-                if "No response returned" in str(e):
+                if 'No response returned' in str(e):
                     # Isso acontece quando uma rota não retorna nada
-                    print(f"⚠️  Rota {request.url.path} não retornou resposta")
+                    print(f'⚠️  Rota {request.url.path} não retornou resposta')
                     return JSONResponse(
                         status_code=500,
-                        content={"detail": "Erro interno: rota não retornou resposta"}
+                        content={
+                            'detail': 'Erro interno: rota não retornou resposta'
+                        },
                     )
                 raise
+
     # --------------------------------------------------
 
     def setup_middlewares(self) -> None:
@@ -137,7 +139,7 @@ class Server:
                 str(ORIGINS_DEFAULT),
             ],  # Em produção, especifique os domínios
             allow_credentials=True,
-           allow_methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+            allow_methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
             allow_headers=['*'],
         )
 

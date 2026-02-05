@@ -5,6 +5,7 @@ Copie e cole no seu arquivo models.py original.
 """
 
 from datetime import datetime
+
 from tortoise import fields, models
 
 
@@ -55,15 +56,11 @@ class Client(models.Model):
 
     # Duas relações possíveis
     user = fields.ForeignKeyField(
-        'models.User',
-        related_name='clients',
-        null=True
+        'models.User', related_name='clients', null=True
     )
 
     trial_account = fields.ForeignKeyField(
-        'models.TrialAccount',
-        related_name='clients',
-        null=True
+        'models.TrialAccount', related_name='clients', null=True
     )
 
     full_name = fields.CharField(max_length=200)
@@ -76,10 +73,7 @@ class Client(models.Model):
 
     class Meta:
         table = 'clients'
-        indexes = [
-            ('user_id', 'phone'),
-            ('trial_account_id', 'phone')
-        ]
+        indexes = [('user_id', 'phone'), ('trial_account_id', 'phone')]
 
     def __str__(self):
         return f'Client: {self.full_name} ({self.phone})'
@@ -92,15 +86,11 @@ class Service(models.Model):
 
     # Duas relações possíveis
     user = fields.ForeignKeyField(
-        'models.User',
-        related_name='services',
-        null=True
+        'models.User', related_name='services', null=True
     )
 
     trial_account = fields.ForeignKeyField(
-        'models.TrialAccount',
-        related_name='services',
-        null=True
+        'models.TrialAccount', related_name='services', null=True
     )
 
     name = fields.CharField(max_length=200)
@@ -116,10 +106,7 @@ class Service(models.Model):
 
     class Meta:
         table = 'services'
-        indexes = [
-            ('user_id', 'is_active'),
-            ('trial_account_id', 'is_active')
-        ]
+        indexes = [('user_id', 'is_active'), ('trial_account_id', 'is_active')]
 
     def __str__(self):
         return f'Service: {self.name} - R${self.price}'
@@ -140,26 +127,19 @@ class Appointment(models.Model):
 
     # Duas relações possíveis para o proprietário
     user = fields.ForeignKeyField(
-        'models.User',
-        related_name='appointments',
-        null=True
+        'models.User', related_name='appointments', null=True
     )
 
     trial_account = fields.ForeignKeyField(
-        'models.TrialAccount',
-        related_name='appointments',
-        null=True
+        'models.TrialAccount', related_name='appointments', null=True
     )
 
     # Cliente e serviço (já suportam trial via Client e Service)
     client = fields.ForeignKeyField(
-        'models.Client',
-        related_name='appointments',
-        null=True
+        'models.Client', related_name='appointments', null=True
     )
     service = fields.ForeignKeyField(
-        'models.Service',
-        related_name='appointments'
+        'models.Service', related_name='appointments'
     )
 
     appointment_date = fields.DateField()
@@ -168,9 +148,7 @@ class Appointment(models.Model):
     client_phone = fields.CharField(max_length=20)
 
     status = fields.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='scheduled'
+        max_length=20, choices=STATUS_CHOICES, default='scheduled'
     )
     price = fields.DecimalField(max_digits=10, decimal_places=2)
 
@@ -202,15 +180,11 @@ class BusinessSettings(models.Model):
 
     # Duas relações possíveis (OneToOne para cada)
     user = fields.OneToOneField(
-        'models.User',
-        related_name='settings',
-        null=True
+        'models.User', related_name='settings', null=True
     )
 
     trial_account = fields.OneToOneField(
-        'models.TrialAccount',
-        related_name='settings',
-        null=True
+        'models.TrialAccount', related_name='settings', null=True
     )
 
     whatsapp_message_template = fields.TextField(

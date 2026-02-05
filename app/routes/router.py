@@ -11,11 +11,12 @@ def register_routes(app: FastAPI) -> None:
 
     #####################################################################
     from app.routes.templates.home import router as home_router
-    app.include_router(home_router)
 
+    app.include_router(home_router)
 
     # HEALTH
     from app.routes.templates.health import router as health_router
+
     app.include_router(health_router)
     #####################################################################
 

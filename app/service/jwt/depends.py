@@ -50,7 +50,7 @@ async def get_current_user(
         print('DEBUG get_current_user: Nenhum token encontrado')
         return None
 
-    #print(f'DEBUG get_current_user: Token encontrado ({len(token)} chars)')
+    # print(f'DEBUG get_current_user: Token encontrado ({len(token)} chars)')
 
     try:
         # Decodifica o token

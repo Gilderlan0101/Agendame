@@ -11,6 +11,7 @@ from typing import Optional
 
 from tortoise.exceptions import DoesNotExist
 
+from app.models.trial import TrialAccount
 from app.models.user import User
 
 
@@ -43,8 +44,12 @@ async def company_exist(companyID: int) -> Optional[User]:
         # Busca a empresa pelo ID
         # get_or_none já retorna None se não encontrar, não precisa fazer filter depois
         company = await User.get_or_none(id=companyID)
-
-        return company  # Retorna o objeto User ou None
+        if company:
+            return company  # Retorna o objeto User ou None
+        else:
+            # Buscar por usuario trial de 7 dias
+            company = await TrialAccount.get_or_none(id=companyID)
+            return company
 
     except DoesNotExist:
         # Esta exceção só será levantada se usarmos User.get() ao invés de User.get_or_none()

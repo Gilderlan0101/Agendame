@@ -12,24 +12,28 @@ DEFAULT_SQLITE_PATH = 'agendame.db'
 
 
 # migration.py
-from tortoise import BaseDBAsyncClient
-from tortoise import fields, models
+from tortoise import BaseDBAsyncClient, fields, models
+
 
 async def upgrade(db: BaseDBAsyncClient) -> str:
-    await db.execute_script("""
+    await db.execute_script(
+        """
         ALTER TABLE clients
         ADD COLUMN trial_account_id INT NULL,
         ADD FOREIGN KEY (trial_account_id) REFERENCES trial(id);
-    """)
-    return "Added trial_account_id to clients table"
+    """
+    )
+    return 'Added trial_account_id to clients table'
+
 
 async def downgrade(db: BaseDBAsyncClient) -> str:
-    await db.execute_script("""
+    await db.execute_script(
+        """
         ALTER TABLE clients
         DROP COLUMN trial_account_id;
-    """)
-    return "Removed trial_account_id from clients table"
-
+    """
+    )
+    return 'Removed trial_account_id from clients table'
 
 
 def normalize_database_url(url: str) -> str:
