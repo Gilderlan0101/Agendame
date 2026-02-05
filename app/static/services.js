@@ -228,6 +228,7 @@ export async function saveEditedService() {
             duration_minutes: serviceDuration,
             order: serviceOrder,
             is_active: serviceActive
+            is_trial: sessionStorage.getItem("is_trial") || false
         };
 
         console.log('Enviando dados:', requestData);
@@ -330,7 +331,8 @@ export async function saveNewService() {
             price: servicePrice.toFixed(2), // Enviar como string
             duration_minutes: serviceDuration,
             order: serviceOrder,
-            is_active: serviceActive
+            is_active: serviceActive,
+            is_trial: sessionStorage.getItem('is_trial') || false
         };
 
         console.log('Enviando dados:', requestData);

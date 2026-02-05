@@ -114,8 +114,9 @@ export async function loginUser(email, password) {
 
             localStorage.setItem('agendame_user', JSON.stringify(currentUser));
             localStorage.setItem('agendame_token', authToken);
+            localStorage.setItem('user_id', currentUser.id);
 
-            console.log('👤 Dados básicos do usuário salvos:', currentUser);
+
         }
 
         // Tentar carregar dados completos do usuário
@@ -187,6 +188,8 @@ async function loadUserData() {
             // Atualizar localStorage com dados completos
             localStorage.setItem('agendame_user', JSON.stringify(currentUser));
             localStorage.setItem('is_trial', currentUser.is_trial ? '1' : '0');
+            // salvando id do usuario
+            localStorage.setItem('id', currentUser.id);
 
             // Atualizar interface
             updateUserInterface();

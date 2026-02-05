@@ -608,6 +608,7 @@ export async function saveAppointmentChanges(appointmentId) {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify(updateData)
         });
 
@@ -661,7 +662,8 @@ async function loadServicesForAppointment() {
             headers: {
                 'Authorization': `Bearer ${appState.token}`,
                 'Accept': 'application/json'
-            }
+            },
+            credentials: 'include',
         });
 
         if (response.ok) {
@@ -733,6 +735,7 @@ export async function saveNewAppointment() {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify(appointmentData)
         });
 
@@ -863,7 +866,8 @@ export async function updateNextAppointmentsList() {
             headers: {
                 'Authorization': `Bearer ${appState.token}`,
                 'Accept': 'application/json'
-            }
+            },
+            credentials: 'include',
         });
 
         if (response.ok) {

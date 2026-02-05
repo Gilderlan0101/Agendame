@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import HTTPException, Request, status
 from fastapi.responses import RedirectResponse
-
+from dotenv import load_dotenv
 from app.models.trial import TrialAccount
 from app.models.user import User
 from app.schemas.auth.schemas_login import LoginResponse
@@ -11,6 +11,8 @@ from app.service.jwt.auth import (
     create_refresh_token,
     verify_password,
 )
+
+load_dotenv()
 
 
 async def checking_account(
@@ -57,9 +59,11 @@ async def checking_account(
                 key='access_token',
                 value=access_token,
                 httponly=True,
-                max_age=3600,
+                max_age=3600 * 24 * 7,  # 7 dias
                 secure=True,
-                samesite='lax' if request.url.scheme == 'http' else 'none',
+                samesite=os.getenv('SAMESITE')
+                if request.url.scheme == 'http'
+                else 'none',
             )
         else:
             # Se não tiver Request, cria uma resposta vazia
@@ -137,9 +141,11 @@ async def checking_account_trial(
                 key='access_token',
                 value=access_token,
                 httponly=True,
-                max_age=3600,
+                max_age=3600 * 24 * 7,  # 7 dias
                 secure=True,
-                samesite='lax' if request.url.scheme == 'http' else 'none',
+                samesite=os.getenv('SAMESITE')
+                if request.url.scheme == 'http'
+                else 'none',
             )
         else:
             response = None

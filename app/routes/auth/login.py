@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from typing import Optional
-
+from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -14,14 +14,12 @@ from app.service.auth.auth_login import (
 )
 from app.service.auth.auth_register import SignupFreeTrial
 from app.service.jwt.depends import SystemUser, get_current_user
+from app.core.config import templates
+
+load_dotenv()
 
 router = APIRouter(tags=['Autenticação'])
 router_login = APIRouter(tags=['Autenticação'], prefix='/auth')
-
-# Configurar templates
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
-template_dir = BASE_DIR / 'app' / 'templates'
-templates = Jinja2Templates(directory=str(template_dir))
 
 
 @router_login.get('/me')
@@ -132,9 +130,9 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
             key='access_token',
             value=verify_auth.get('access_token'),
             httponly=True,
-            max_age=3600,  # 1 hora
+            max_age=3600 * 24 * 7,  # 7 dias
             secure=True,  # True em produção com HTTPS
-            samesite='lax',
+            samesite=os.getenv('SAMESITE'),
         )
 
         return response
