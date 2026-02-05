@@ -5,7 +5,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.controllers.agendame.services import Services
-from app.models.user import Appointment, Client, Service, User
 from app.schemas.agendame.response_service_agendame import ServiceItem
 from app.schemas.agendame.upgrade_service import UpdateServices
 from app.service.jwt.depends import SystemUser, get_current_user
@@ -37,9 +36,7 @@ async def upgrade_service(
     schemas_update: UpdateServices,
     current_user: SystemUser = Depends(get_current_user),
 ):
-
     target_service = Services(target_company_id=current_user.id)
-
     return await target_service.upgrade_service(
         target_service_id=service_id, schemas=schemas_update
     )
@@ -56,74 +53,12 @@ async def get_clients(
 ):
     """
     Busca todos os clientes da empresa do usuário logado.
-    Retorna { "clients": [...] } como o JS espera.
     """
     try:
-        user = await User.get_or_none(id=current_user.id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Usuário não encontrado',
-            )
-
-        # Construir query base
-        query = Client.filter(user=user)
-
-        # Aplicar filtro de busca se fornecido
-        if search_query:
-            query = query.filter(full_name__icontains=search_query)
-
-        # Ordenar por nome e calcular total
-        query = query.order_by('full_name')
-        total_count = await query.count()
-
-        # Aplicar paginação
-        clients = await query.offset(offset).limit(limit).all()
-
-        # Formatar resposta para o JS
-        clients_data = []
-        for client in clients:
-            # Contar agendamentos deste cliente
-            total_appointments = await Appointment.filter(
-                user=user, client=client
-            ).count()
-
-            # Buscar último serviço agendado usando select_related para carregar o serviço
-            last_appointment = (
-                await Appointment.filter(user=user, client=client)
-                .select_related('service')  # Carrega o serviço relacionado
-                .order_by('-appointment_date', '-appointment_time')
-                .first()
-            )
-
-            last_service = None
-            if last_appointment and last_appointment.service:
-                # CORREÇÃO: Acessar o objeto service e depois seu atributo name
-                last_service = last_appointment.service.name
-
-            clients_data.append(
-                {
-                    'id': client.id,
-                    'full_name': client.full_name,
-                    'phone': client.phone,
-                    'total_appointments': total_appointments,
-                    'last_service': last_service,  # Agora é uma string com o nome do serviço
-                    'created_at': client.created_at.isoformat()
-                    if client.created_at
-                    else None,
-                    'is_active': client.is_active,
-                }
-            )
-
-        return {
-            'clients': clients_data,
-            'pagination': {
-                'total': total_count,
-                'limit': limit,
-                'offset': offset,
-                'has_more': (offset + len(clients)) < total_count,
-            },
-        }
+        services_domain = Services(target_company_id=current_user.id)
+        return await services_domain.get_clients(
+            search_query=search_query, limit=limit, offset=offset
+        )
 
     except Exception as e:
         print(f'Erro ao buscar clientes: {str(e)}')
@@ -141,78 +76,8 @@ async def get_dashboard_stats(
     Retorna estatísticas para o dashboard.
     """
     try:
-        user = await User.get_or_none(id=current_user.id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Usuário não encontrado',
-            )
-
-        today = date.today()
-
-        # Estatísticas básicas
-        total_services = await Service.filter(
-            user=user, is_active=True
-        ).count()
-        total_clients = await Client.filter(user=user, is_active=True).count()
-
-        # Agendamentos de hoje
-        today_appointments = (
-            await Appointment.filter(
-                user=user,
-                appointment_date=today,
-                status__in=['scheduled', 'confirmed'],
-            )
-            .select_related('service', 'client')
-            .all()
-        )
-
-        today_revenue = sum(
-            float(app.price) for app in today_appointments if app.price
-        )
-
-        # Próximos agendamentos (hoje e futuro)
-        upcoming_appointments = (
-            await Appointment.filter(
-                user=user,
-                appointment_date__gte=today,
-                status__in=['scheduled', 'confirmed'],
-            )
-            .select_related('service', 'client')
-            .order_by('appointment_date', 'appointment_time')
-            .limit(10)
-            .all()
-        )
-
-        upcoming_data = []
-        for app in upcoming_appointments:
-            # CORREÇÃO: Usar select_related para carregar service e client
-            service_name = app.service.name if app.service else 'Serviço'
-            client_name = (
-                app.client.full_name if app.client else app.client_name
-            )
-
-            upcoming_data.append(
-                {
-                    'id': app.id,
-                    'client_name': client_name,
-                    'service_name': service_name,
-                    'appointment_date': app.appointment_date.isoformat(),
-                    'appointment_time': app.appointment_time,
-                    'price': float(app.price) if app.price else 0.0,
-                }
-            )
-
-        return {
-            'stats': {
-                'total_services': total_services,
-                'total_clients': total_clients,
-                'today_appointments': len(today_appointments),
-                'today_revenue': today_revenue,
-                'upcoming_appointments': len(upcoming_appointments),
-            },
-            'upcoming_appointments': upcoming_data,
-        }
+        services_domain = Services(target_company_id=current_user.id)
+        return await services_domain.get_dashboard_stats()
 
     except Exception as e:
         print(f'Erro ao buscar estatísticas: {str(e)}')

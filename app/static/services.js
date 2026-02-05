@@ -8,24 +8,31 @@ export async function loadServices() {
 
     try {
         console.log('Carregando serviços da empresa...');
+        console.log('Token no appState:', appState.token ? 'Presente' : 'Ausente');
 
         // Rota administrativa para empresa logada
+        // IMPORTANTE: Remover o Authorization header se estiver usando cookies
         const response = await fetch(`/agendame/services`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${appState.token}`,
                 'Accept': 'application/json'
-            }
+                // NÃO enviar Authorization header se usar cookies
+                // 'Authorization': `Bearer ${appState.token}`
+            },
+            credentials: 'include', // IMPORTANTE: Envia cookies
         });
 
+        console.log('Resposta status:', response.status);
+        console.log('Resposta headers:', response.headers);
 
         if (response.ok) {
             const data = await response.json();
+            console.log('Dados recebidos:', data);
 
             // Formatar os serviços para o formato esperado
             appState.services = Array.isArray(data) ? data : (data.services || data || []);
 
-
+            // Atualizar contador
             if (servicesCount) {
                 servicesCount.textContent = appState.services.length;
             }
@@ -36,14 +43,19 @@ export async function loadServices() {
             let errorMessage = 'Erro ao carregar serviços';
             try {
                 const errorData = await response.json();
-                errorMessage = errorData.detail || errorMessage;
+                errorMessage = errorData.detail || errorData.message || errorMessage;
             } catch (e) {
+                // Tentar ler como texto se não for JSON
+                const text = await response.text();
+                console.error('Erro texto:', text);
                 errorMessage = `Erro ${response.status}: ${response.statusText}`;
             }
+            console.error('Erro completo:', errorMessage);
             throw new Error(errorMessage);
         }
 
     } catch (error) {
+        console.error('Erro no catch:', error);
         showAlert(error.message || 'Erro ao carregar serviços', 'error');
 
         // Mostrar estado vazio
@@ -70,6 +82,7 @@ export function renderServices(services) {
         return;
     }
 
+    console.log('Renderizando serviços:', services);
 
     if (!services || services.length === 0) {
         servicesList.innerHTML = `
@@ -86,19 +99,21 @@ export function renderServices(services) {
     }
 
     servicesList.innerHTML = services.map(service => {
+        // Log para debug
+        console.log('Processando serviço:', service);
+
         // Extrair dados com fallbacks para diferentes formatos de API
         const serviceId = service.id || service.service_id || 0;
         const serviceName = service.name || service.service_name || 'Serviço sem nome';
         const serviceDescription = service.description || '';
         const servicePrice = parseFloat(service.price || service.service_price || 0);
-        const serviceDuration = service.duration_minutes || service.duration || service.duration_minutes || 60;
+        const serviceDuration = service.duration_minutes || service.duration || 60;
         const serviceOrder = service.order || 0;
         const isActive = service.is_active !== undefined ? service.is_active :
                         (service.active !== undefined ? service.active : true);
 
         const statusClass = isActive === false ? 'status-inactive' : 'status-active';
         const statusText = isActive === false ? 'Inativo' : 'Ativo';
-
 
         return `
             <div class="service-item" data-service-id="${serviceId}">
@@ -145,6 +160,7 @@ export function renderServices(services) {
 
 // Editar serviço
 export function editService(serviceId) {
+    console.log('Editando serviço ID:', serviceId);
 
     const service = appState.services.find(s => {
         const id = s.id || s.service_id;
@@ -156,12 +172,11 @@ export function editService(serviceId) {
         return;
     }
 
-
     // Preencher formulário com valores do serviço
     const serviceName = service.name || service.service_name || '';
     const serviceDescription = service.description || '';
     const servicePrice = parseFloat(service.price || service.service_price || 0);
-    const serviceDuration = service.duration_minutes || service.duration || service.duration_minutes || 60;
+    const serviceDuration = service.duration_minutes || service.duration || 60;
     const serviceOrder = service.order || 0;
     const serviceActive = service.is_active !== undefined ? service.is_active :
                          (service.active !== undefined ? service.active : true);
@@ -192,6 +207,9 @@ export async function saveEditedService() {
     const serviceOrder = parseInt(document.getElementById('editServiceOrder').value) || 0;
     const serviceActive = document.getElementById('editServiceActive').checked;
 
+    console.log('Salvando serviço editado:', {
+        serviceId, serviceName, serviceDescription, servicePrice, serviceDuration, serviceOrder, serviceActive
+    });
 
     // Validação
     if (!serviceName || isNaN(servicePrice) || servicePrice <= 0 || isNaN(serviceDuration) || serviceDuration <= 0) {
@@ -206,27 +224,32 @@ export async function saveEditedService() {
         const requestData = {
             name: serviceName,
             description: serviceDescription || null,
-            price: servicePrice.toString(),
+            price: servicePrice.toFixed(2), // Enviar como string
             duration_minutes: serviceDuration,
             order: serviceOrder,
             is_active: serviceActive
         };
 
+        console.log('Enviando dados:', requestData);
 
         // Enviar para API
         const response = await fetch(`/agendame/update/service/${serviceId}`, {
             method: 'PUT',
             headers: {
-                'Authorization': `Bearer ${appState.token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+                // NÃO enviar Authorization se usar cookies
+                // 'Authorization': `Bearer ${appState.token}`
             },
-            body: JSON.stringify(requestData)
+            body: JSON.stringify(requestData),
+            credentials: 'include', // IMPORTANTE
         });
 
+        console.log('Resposta status:', response.status);
 
         if (response.ok) {
             const result = await response.json();
+            console.log('Resultado:', result);
 
             showAlert(result.message || 'Serviço atualizado com sucesso!', 'success');
 
@@ -241,8 +264,12 @@ export async function saveEditedService() {
             let errorMessage = 'Erro ao atualizar serviço';
             try {
                 const errorData = await response.json();
-                errorMessage = errorData.detail || errorMessage;
+                errorMessage = errorData.detail || errorData.message || errorMessage;
+                console.error('Erro detalhado:', errorData);
             } catch (e) {
+                // Tentar ler como texto
+                const text = await response.text();
+                console.error('Erro texto:', text);
                 errorMessage = `Erro ${response.status}: ${response.statusText}`;
             }
             throw new Error(errorMessage);
@@ -283,7 +310,9 @@ export async function saveNewService() {
     const serviceOrder = parseInt(document.getElementById('serviceOrder').value) || 0;
     const serviceActive = document.getElementById('serviceActive').checked;
 
-
+    console.log('Criando novo serviço:', {
+        serviceName, serviceDescription, servicePrice, serviceDuration, serviceOrder, serviceActive
+    });
 
     // Validação
     if (!serviceName || isNaN(servicePrice) || servicePrice <= 0 || isNaN(serviceDuration) || serviceDuration <= 0) {
@@ -298,27 +327,32 @@ export async function saveNewService() {
         const requestData = {
             name: serviceName,
             description: serviceDescription || null,
-            price: servicePrice,
+            price: servicePrice.toFixed(2), // Enviar como string
             duration_minutes: serviceDuration,
             order: serviceOrder,
             is_active: serviceActive
         };
 
+        console.log('Enviando dados:', requestData);
 
         // Enviar para API
         const response = await fetch('/agendame/register/service', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${appState.token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+                // NÃO enviar Authorization se usar cookies
+                // 'Authorization': `Bearer ${appState.token}`
             },
-            body: JSON.stringify(requestData)
+            body: JSON.stringify(requestData),
+            credentials: 'include', // IMPORTANTE
         });
 
+        console.log('Resposta status:', response.status);
 
         if (response.ok) {
             const result = await response.json();
+            console.log('Resultado:', result);
 
             showAlert('Serviço cadastrado com sucesso!', 'success');
 
@@ -337,8 +371,12 @@ export async function saveNewService() {
             let errorMessage = 'Erro ao cadastrar serviço';
             try {
                 const errorData = await response.json();
-                errorMessage = errorData.detail || errorMessage;
+                errorMessage = errorData.detail || errorData.message || errorMessage;
+                console.error('Erro detalhado:', errorData);
             } catch (e) {
+                // Tentar ler como texto
+                const text = await response.text();
+                console.error('Erro texto:', text);
                 errorMessage = `Erro ${response.status}: ${response.statusText}`;
             }
             throw new Error(errorMessage);
@@ -365,19 +403,30 @@ export async function activateService(serviceId) {
         const response = await fetch(`/agendame/update/service/${serviceId}`, {
             method: 'PUT',
             headers: {
-                'Authorization': `Bearer ${appState.token}`,
+                'Accept': 'application/json',
                 'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({
                 is_active: true
             })
         });
 
+        console.log('Resposta ativar:', response.status);
+
         if (response.ok) {
-            showAlert('Serviço ativado com sucesso!', 'success');
+            const result = await response.json();
+            showAlert(result.message || 'Serviço ativado com sucesso!', 'success');
             await loadServices();
         } else {
-            throw new Error('Erro ao ativar serviço');
+            let errorMessage = 'Erro ao ativar serviço';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorMessage;
+            } catch (e) {
+                errorMessage = `Erro ${response.status}`;
+            }
+            throw new Error(errorMessage);
         }
 
     } catch (error) {
@@ -392,53 +441,75 @@ export async function activateService(serviceId) {
 export async function deactivateService(serviceId) {
     console.log('Desativando/removendo serviço ID:', serviceId);
 
-    if (!confirm('Deseja desativar/remover este serviço?')) return;
+    const action = confirm('Deseja desativar este serviço? (Clique OK para desativar, Cancelar para remover)');
 
     setLoading(true);
 
     try {
-        // Primeiro tenta desativar (marcar como inativo)
-        const response = await fetch(`/agendame/update/service/${serviceId}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${appState.token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                is_active: false
-            })
-        });
+        if (action === true) {
+            // Desativar (marcar como inativo)
+            console.log('Desativando serviço...');
+            const response = await fetch(`/agendame/update/service/${serviceId}`, {
+                method: 'PUT',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    is_active: false
+                })
+            });
 
-        if (response.ok) {
-            showAlert('Serviço desativado com sucesso!', 'success');
-            await loadServices();
+            console.log('Resposta desativar:', response.status);
+
+            if (response.ok) {
+                const result = await response.json();
+                showAlert(result.message || 'Serviço desativado com sucesso!', 'success');
+            } else {
+                let errorMessage = 'Erro ao desativar serviço';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.detail || errorMessage;
+                } catch (e) {
+                    errorMessage = `Erro ${response.status}`;
+                }
+                throw new Error(errorMessage);
+            }
         } else {
-            // Se não conseguir desativar, tenta remover
-            throw new Error('Tentando remover...');
-        }
-
-    } catch (error) {
-        console.log('Tentando remover serviço...');
-
-        // Tentar remover completamente
-        try {
+            // Remover completamente
+            console.log('Removendo serviço...');
             const deleteResponse = await fetch(`/agendame/remove/service/${serviceId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${appState.token}`
-                }
+                    'Accept': 'application/json'
+                },
+                credentials: 'include',
             });
 
+            console.log('Resposta deletar:', deleteResponse.status);
+
             if (deleteResponse.ok) {
-                showAlert('Serviço removido com sucesso!', 'success');
-                await loadServices();
+                const result = await deleteResponse.json();
+                showAlert(result.message || 'Serviço removido com sucesso!', 'success');
             } else {
-                throw new Error('Erro ao remover serviço');
+                let errorMessage = 'Erro ao remover serviço';
+                try {
+                    const errorData = await deleteResponse.json();
+                    errorMessage = errorData.detail || errorMessage;
+                } catch (e) {
+                    errorMessage = `Erro ${deleteResponse.status}`;
+                }
+                throw new Error(errorMessage);
             }
-        } catch (deleteError) {
-            console.error('Erro ao remover serviço:', deleteError);
-            showAlert('Erro ao remover serviço', 'error');
         }
+
+        // Recarregar serviços
+        await loadServices();
+
+    } catch (error) {
+        console.error('Erro:', error);
+        showAlert(error.message || 'Erro ao processar serviço', 'error');
     } finally {
         setLoading(false);
     }
