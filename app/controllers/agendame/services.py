@@ -171,14 +171,40 @@ class Services:
         """Retorna informações básicas da empresa para a resposta da API."""
         user = None
 
-        if search_type == 'slug' or search_type == 'auto':
+        # Definir a ordem de busca baseada no search_type
+        if search_type == 'slug':
+            # Busca apenas por slug
             user = await User.filter(business_slug=identifier).first()
+            if not user:
+                user = await TrialAccount.filter(business_slug=identifier).first()
 
-        if search_type == 'username' or (search_type == 'auto' and not user):
+        elif search_type == 'username':
+            # Busca apenas por username
             user = await User.filter(username=identifier).first()
+            if not user:
+                user = await TrialAccount.filter(username=identifier).first()
 
-        if search_type == 'name' or (search_type == 'auto' and not user):
+        elif search_type == 'name':
+            # Busca apenas por business_name
             user = await User.filter(business_name=identifier).first()
+            if not user:
+                user = await TrialAccount.filter(business_name=identifier).first()
+
+        else:  # 'auto' - busca em todos os campos e tabelas
+            # Primeiro busca na tabela User
+            user = await User.filter(business_slug=identifier).first()
+            if not user:
+                user = await User.filter(username=identifier).first()
+            if not user:
+                user = await User.filter(business_name=identifier).first()
+
+            # Se não encontrou em User, busca na TrialAccount
+            if not user:
+                user = await TrialAccount.filter(business_slug=identifier).first()
+            if not user:
+                user = await TrialAccount.filter(username=identifier).first()
+            if not user:
+                user = await TrialAccount.filter(business_name=identifier).first()
 
         if not user:
             raise HTTPException(
