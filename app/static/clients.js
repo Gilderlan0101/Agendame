@@ -1,6 +1,7 @@
 // clients.js - Gerenciamento de clientes com UI melhorada
 
 import { appState } from './appState.js';
+import { API_BASE_URL } from './config.js';
 import { clientsCount, clientsList } from './domElements.js';
 import { formatDate, formatPhone, setLoading, showAlert } from './utils.js';
 import { sendWhatsAppToClient } from './whatsapp.js';
@@ -16,7 +17,7 @@ export async function loadClients(isDashboard = false) {
     setLoading(true);
 
     try {
-        const response = await fetch('https://agendame.onrender.com/clients', {
+        const response = await fetch(`${API_BASE_URL}clients`, {
             headers: {
                 'Authorization': `Bearer ${appState.token}`,
                 'Accept': 'application/json'
@@ -422,7 +423,7 @@ export async function saveClientChanges(clientId) {
 
         setLoading(true);
 
-        const response = await fetch(`/clients/${clientId}`, {
+        const response = await fetch(`${API_BASE_URL}clients/${clientId}`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${appState.token}`,
@@ -458,7 +459,7 @@ export async function saveClientChanges(clientId) {
  */
 export async function viewClientHistory(clientId) {
     try {
-        const response = await fetch(`/clients/${clientId}/appointments`, {
+        const response = await fetch(`${API_BASE_URL}clients/${clientId}/appointments`, {
             headers: {
                 'Authorization': `Bearer ${appState.token}`
             }

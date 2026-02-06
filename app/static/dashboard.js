@@ -2,6 +2,7 @@ import { loadAppointments } from './appointments.js';
 import { appState } from './appState.js';
 import { loadClients } from './clients.js';
 import { getCompanySlug } from './company.js';
+import { API_BASE_URL } from './config.js';
 import {
     activeServices,
     nextAppointmentsCount,
@@ -53,7 +54,7 @@ export async function loadDashboardData() {
 // Carregar estatísticas do dashboard via API
 async function loadDashboardStats() {
     try {
-        const response = await fetch('/dashboard/stats', {
+        const response = await fetch(`${API_BASE_URL}dashboard/stats`, {
             // NÃO enviar Authorization header - usar apenas cookies
             credentials: 'include',
         });
@@ -93,7 +94,7 @@ async function loadCompanyDashboardData() {
             return;
         }
 
-        const companyResponse = await fetch(`/agendame/${appState.companySlug}/info`, {
+        const companyResponse = await fetch(`${API_BASE_URL}agendame/${appState.companySlug}/info`, {
             // NÃO enviar Authorization header
             credentials: 'include',
         });
@@ -114,7 +115,7 @@ async function loadCompanyDashboardData() {
 async function loadAdminDashboardData() {
     try {
         // Carregar serviços administrativos
-        const servicesResponse = await fetch('/agendame/services', {
+        const servicesResponse = await fetch(`${API_BASE_URL}agendame/services`, {
             // NÃO enviar Authorization header
             credentials: 'include',
         });
@@ -132,7 +133,7 @@ async function loadAdminDashboardData() {
         await loadAppointments(today, true);
 
         // Carregar clientes (somente para contagem)
-        const clientsResponse = await fetch('/clients?limit=1', {
+        const clientsResponse = await fetch(`${API_BASE_URL}clients?limit=1`, {
             credentials: 'include',
         });
 
@@ -154,7 +155,7 @@ async function loadUpcomingAppointments() {
     try {
         const today = new Date().toISOString().split('T')[0];
 
-        const response = await fetch(`/agendame/appointments?start_date=${today}`, {
+        const response = await fetch(`${API_BASE_URL}agendame/appointments?start_date=${today}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -277,7 +278,7 @@ export function getDashboardStats() {
 export async function checkForNewAppointments() {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`/agendame/appointments/today`, {
+        const response = await fetch(`${API_BASE_URL}agendame/appointments/today`, {
             credentials: 'include',
         });
 

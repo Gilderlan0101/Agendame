@@ -7,11 +7,8 @@ from fastapi import HTTPException, status
 from app.models.trial import TrialAccount
 from app.models.user import User
 from app.service.jwt.auth import get_hashed_password, verify_password
-from app.utils.hashed_email import (
-    create_email_search_hash,
-    get_hashed_email,
-    verify_email,
-)
+from app.utils.hashed_email import (create_email_search_hash, get_hashed_email,
+                                    verify_email)
 
 
 async def create_account(target):
@@ -56,7 +53,9 @@ async def create_account(target):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail='Error  {}'.format(str(e)),
         )
-
+from datetime import datetime, timedelta, timezone
+from fastapi import HTTPException, status
+from typing import Dict, Any
 
 class SignupFreeTrial:
     """
@@ -65,21 +64,29 @@ class SignupFreeTrial:
 
     def __init__(self, data: Dict[str, Any] | None) -> None:
         self.data = data
+        self.test_mode = False  # Flag para ativar modo de teste
+        self.test_days_remaining = 4  # Dias para simular no teste
 
     async def count_days_remaining(self, account_target_id) -> int:
         """
-        count_days_remaining: Responsavel por contar os dias restantes da conta de sete dias grátis
+        count_days_remaining: Responsável por contar os dias restantes da conta de sete dias grátis
+
+        Em modo de teste: retorna sempre 4 dias
+        Em modo normal: faz o cálculo real
         """
 
-        # Buscar a conta pelo ID
+        # MODO DE TESTE: Sempre retorna 4 dias
+        if self.test_mode:
+            return self.test_days_remaining
+
+        # MODO NORMAL: Cálculo real
         search_account = await TrialAccount.filter(
             id=account_target_id
         ).first()
-        # Caso não encontre a conta, retornar 0 dias restantes
+
         if not search_account:
             return 0
 
-        # fazer o cálculo dos dias restantes
         date_now = datetime.now(timezone.utc)
         subscription_end = search_account.subscription_end
 
@@ -87,31 +94,29 @@ class SignupFreeTrial:
             return 0
 
         delta = subscription_end - date_now
-
-        # retornar a quantidade de dias restantes
         return delta.days
-
-    from datetime import datetime, timezone
 
     async def remove_account_after_trial(self, target_by_email: str) -> bool:
         """
         remove_account_after_trial: Responsável por remover conta após o período de sete dias grátis
+
+        Em modo de teste: nunca remove (porque faltam 4 dias)
+        Em modo normal: verifica data real
         """
 
-        #  USER ESSA VARIAVEL PARA TESTE
-        data_expirada_teste = datetime(2026, 2, 1, tzinfo=timezone.utc)
+        # MODO DE TESTE: Nunca remove porque faltam 4 dias
+        if self.test_mode:
+            return False
 
         try:
             account = await TrialAccount.filter(email=target_by_email).first()
 
-            # Use datetime.now(timezone.utc) para já criar com timezone
             date_now = datetime.now(timezone.utc)
 
             if account and account.subscription_end:
-                # Garanta que a data do banco também seja tratada como UTC
-                search_date = account.subscription_end  # data_expirada_teste
+                # DATA DE TESTE: 4 dias no futuro
+                search_date = datetime.now(timezone.utc) + timedelta(days=4)
 
-                # Se search_date for naive, o replace resolve. Se já for aware, fica ok.
                 if date_now > search_date.replace(tzinfo=timezone.utc):
                     await account.delete()
                     return True
@@ -125,10 +130,20 @@ class SignupFreeTrial:
                 detail=f'Error: {str(e)}',
             )
 
-    async def create(self):
-        """signup_free_trial: Responsavel por cria conta de sete dias grátis"""
-        try:
+    # Método para ativar/desativar modo de teste
+    def set_test_mode(self, enabled: bool = True, days_remaining: int = 4):
+        """
+        Ativa ou desativa o modo de teste
+        Args:
+            enabled: True para ativar modo de teste
+            days_remaining: Dias a simular (padrão: 4)
+        """
+        self.test_mode = enabled
+        self.test_days_remaining = days_remaining
 
+    async def create(self):
+        """signup_free_trial: Responsável por criar conta de sete dias grátis"""
+        try:
             if not self.data:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -145,7 +160,6 @@ class SignupFreeTrial:
                 )
 
             if isinstance(self.data, dict):
-                # CORREÇÃO AQUI: Usando timezone-aware datetime
                 now_utc = datetime.now(timezone.utc)
                 subscription_start = now_utc
                 subscription_end = now_utc + timedelta(days=8)
@@ -165,12 +179,15 @@ class SignupFreeTrial:
                     subscription_end=subscription_end,
                 )
 
+                # No modo de teste, retorna 4 dias mesmo para conta nova
+                days = self.test_days_remaining if self.test_mode else await self.count_days_remaining(
+                    account_target_id=account.id
+                )
+
                 return {
                     'username': self.data.get('username'),
                     'email': self.data.get('email'),
-                    'days_remaining': await self.count_days_remaining(
-                        account_target_id=account.id
-                    ),
+                    'days_remaining': days,
                     'status': True,
                     'is_trial': True,
                 }

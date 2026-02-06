@@ -6,13 +6,11 @@ from tortoise.expressions import Q
 
 from app.controllers.agendame.appointments import Appointments
 from app.models.user import Appointment, Client, Service, User
-from app.schemas.agendame.appointments import (
-    AppointmentCreatedResponse,
-    AppointmentsFilter,
-    AppointmentsListResponse,
-    CreateAppointmentInternal,
-    UpdateAppointmentSchema,
-)
+from app.schemas.agendame.appointments import (AppointmentCreatedResponse,
+                                               AppointmentsFilter,
+                                               AppointmentsListResponse,
+                                               CreateAppointmentInternal,
+                                               UpdateAppointmentSchema)
 from app.service.jwt.depends import SystemUser, get_current_user
 
 router = APIRouter(tags=['Agendame - Agendamentos'])

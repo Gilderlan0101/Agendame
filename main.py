@@ -11,11 +11,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import AuthMiddleware
-from app.database.init_database import (
-    close_database,
-    init_database,
-    print_database_info,
-)
+from app.database.init_database import (close_database, init_database,
+                                        print_database_info)
 from app.routes import router
 from app.routes.router import register_routes
 

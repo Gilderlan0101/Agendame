@@ -1,4 +1,5 @@
 import { appState } from './appState.js';
+import { API_BASE_URL } from './config.js';
 import { servicesCount, servicesList } from './domElements.js';
 import { setLoading, showAlert } from './utils.js';
 
@@ -12,7 +13,7 @@ export async function loadServices() {
 
         // Rota administrativa para empresa logada
         // IMPORTANTE: Remover o Authorization header se estiver usando cookies
-        const response = await fetch(`/agendame/services`, {
+        const response = await fetch(`${API_BASE_URL}agendame/services`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -227,14 +228,14 @@ export async function saveEditedService() {
             price: servicePrice.toFixed(2), // Enviar como string
             duration_minutes: serviceDuration,
             order: serviceOrder,
-            is_active: serviceActive
+            is_active: serviceActive,
             is_trial: sessionStorage.getItem("is_trial") || false
         };
 
         console.log('Enviando dados:', requestData);
 
         // Enviar para API
-        const response = await fetch(`/agendame/update/service/${serviceId}`, {
+        const response = await fetch(`${API_BASE_URL}agendame/update/service/${serviceId}`, {
             method: 'PUT',
             headers: {
                 'Accept': 'application/json',
@@ -338,7 +339,7 @@ export async function saveNewService() {
         console.log('Enviando dados:', requestData);
 
         // Enviar para API
-        const response = await fetch('/agendame/register/service', {
+        const response = await fetch(`{API_BASE_URL}agendame/register/service`, {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
@@ -402,7 +403,7 @@ export async function activateService(serviceId) {
 
     try {
         // Enviar requisição para ativar
-        const response = await fetch(`/agendame/update/service/${serviceId}`, {
+        const response = await fetch(`${API_BASE_URL}agendame/update/service/${serviceId}`, {
             method: 'PUT',
             headers: {
                 'Accept': 'application/json',
@@ -451,7 +452,7 @@ export async function deactivateService(serviceId) {
         if (action === true) {
             // Desativar (marcar como inativo)
             console.log('Desativando serviço...');
-            const response = await fetch(`/agendame/update/service/${serviceId}`, {
+            const response = await fetch(`${API_BASE_URL}agendame/update/service/${serviceId}`, {
                 method: 'PUT',
                 headers: {
                     'Accept': 'application/json',
@@ -481,7 +482,7 @@ export async function deactivateService(serviceId) {
         } else {
             // Remover completamente
             console.log('Removendo serviço...');
-            const deleteResponse = await fetch(`/agendame/remove/service/${serviceId}`, {
+            const deleteResponse = await fetch(`${API_BASE_URL}agendame/remove/service/${serviceId}`, {
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json'

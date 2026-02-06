@@ -1,6 +1,7 @@
 // appointments.js - Gerenciamento de agendamentos (atualizado para novo HTML)
 
 import { appState } from './appState.js';
+import { API_BASE_URL } from './config.js';
 import {
     allAppointmentsCount,
     allAppointmentsList,
@@ -91,7 +92,7 @@ export async function loadAppointments(filters = {}) {
         }
 
         const queryString = queryParams.toString();
-        const url = `/company/appointments${queryString ? `?${queryString}` : ''}`;
+        const url = `${API_BASE_URL}company/appointments${queryString ? `?${queryString}` : ''}`;
 
         const response = await fetch(url, {
             method: 'GET',
@@ -484,7 +485,7 @@ export async function editAppointment(appointmentId) {
     // Carregar serviços disponíveis para o modal
     let availableServices = [];
     try {
-        const response = await fetch('/company/services', {
+        const response = await fetch(`${API_BASE_URL}company/services`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${appState.token} || ${sessionStorage.getItem('agendame_token')}`,
@@ -601,7 +602,7 @@ export async function saveAppointmentChanges(appointmentId) {
 
         setLoading(true);
 
-        const response = await fetch(`/agendame/appointments/${appointmentId}`, {
+        const response = await fetch(`${API_BASE_URL}agendame/appointments/${appointmentId}`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${appState.token}`,
@@ -657,7 +658,7 @@ export function openNewAppointmentModal() {
 // Carregar serviços para o dropdown de agendamento
 async function loadServicesForAppointment() {
     try {
-        const response = await fetch('/company/services', {
+        const response = await fetch(`${API_BASE_URL}company/services`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${appState.token}`,
@@ -728,7 +729,7 @@ export async function saveNewAppointment() {
             notes: appointmentNotes?.value.trim() || ''
         };
 
-        const response = await fetch('/agendame/appointments', {
+        const response = await fetch(`${API_BASE_URL}agendame/appointments`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${appState.token}`,
@@ -861,7 +862,7 @@ export async function updateNextAppointmentsList() {
             limit: 5
         });
 
-        const response = await fetch(`/company/appointments?${queryParams}`, {
+        const response = await fetch(`${API_BASE_URL}company/appointments?${queryParams}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${appState.token}`,

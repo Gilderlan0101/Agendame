@@ -1,5 +1,5 @@
 // logout.js - Gerenciamento de logout
-
+import { API_BASE_URL } from './config.js';
 /**
  * Realiza logout do usuário
  */
@@ -11,7 +11,7 @@ export async function logoutUser() {
         showLogoutConfirmation();
 
         // Chamar API de logout
-        const response = await fetch('https://agendame.onrender.com/auth/logout', {
+        const response = await fetch(`${API_BASE_URL}auth/logout`, {
             method: 'GET',
             credentials: 'include', // Importante para enviar cookies
             headers: {
@@ -28,7 +28,7 @@ export async function logoutUser() {
 
             // Redirecionar para login após um breve delay
             setTimeout(() => {
-                window.location.href = '/login?success=Logout realizado com sucesso';
+                window.location.href = '/login';
             }, 500);
 
             return true;
@@ -45,7 +45,7 @@ export async function logoutUser() {
 
         // Fallback: limpar tudo localmente e redirecionar
         clearLocalStorage();
-        window.location.href = '/login?error=Erro ao fazer logout';
+        window.location.href = '/login';
         return false;
     }
 }
@@ -143,7 +143,7 @@ window.handleLogout = async function() {
     console.log('🖱️ Botão de logout clicado');
 
     // Verifica se está em uma página de agendamento
-    if (window.location.pathname.includes('https://agendame.onrender.com/agendame/')) {
+    if (window.location.pathname.includes(`${API_BASE_URL}agendame/`)) {
         // Mostra confirmação
         const confirmed = confirm('Tem certeza que deseja sair? Você será redirecionado para a página de login.');
 
@@ -238,7 +238,7 @@ export async function checkTokenExpiration() {
 
     try {
         // Verificar token no backend
-        const response = await fetch('https://agendame.onrender.com/auth/me', {
+        const response = await fetch(`${API_BASE_URL}auth/me`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json'
@@ -250,7 +250,7 @@ export async function checkTokenExpiration() {
             // Token inválido ou expirado
             console.warn('Token expirado ou inválido, fazendo logout...');
             clearLocalStorage();
-            window.location.href = '/login?error=Sessão expirada';
+            window.location.href = '/login';
             return false;
         }
 

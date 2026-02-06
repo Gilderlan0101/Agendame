@@ -1,20 +1,19 @@
 import os
 from pathlib import Path
 from typing import Optional
+
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 
+from app.core.config import templates
 from app.schemas.auth.schemas_login import LoginResponse
-from app.service.auth.auth_login import (
-    checking_account,
-    checking_account_trial,
-)
+from app.service.auth.auth_login import (checking_account,
+                                         checking_account_trial)
 from app.service.auth.auth_register import SignupFreeTrial
 from app.service.jwt.depends import SystemUser, get_current_user
-from app.core.config import templates
 
 load_dotenv()
 
@@ -111,42 +110,39 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
             )
 
         # Cria a resposta JSON
-        response = JSONResponse(
-            content={
-                'access_token': verify_auth.get('access_token'),
-                'token_type': 'bearer',
-                'refresh_token': verify_auth.get('refresh_token'),
-                'user_id': verify_auth.get('user_id'),
-                'username': verify_auth.get('username'),
-                'email': verify_auth.get('email'),
-                'business_name': verify_auth.get('business_name'),
-                'slug': verify_auth.get('slug'),
-                'is_trial': verify_auth.get('is_trial', False),
-            }
-        )
+        response_data = {
+            'access_token': verify_auth.get('access_token'),
+            'token_type': 'bearer',
+            'refresh_token': verify_auth.get('refresh_token'),
+            'user_id': verify_auth.get('user_id'),
+            'username': verify_auth.get('username'),
+            'email': verify_auth.get('email'),
+            'business_name': verify_auth.get('business_name'),
+            'slug': verify_auth.get('slug'),
+            'is_trial': verify_auth.get('is_trial', False),
+        }
 
-        # Define o cookie de autenticação
-        response.set_cookie(
-            key='access_token',
-            value=verify_auth.get('access_token'),
-            httponly=True,
-            max_age=3600 * 24 * 7,  # 7 dias
-            secure=True,  # True em produção com HTTPS
-            samesite=os.getenv('SAMESITE'),
-        )
+        # Adiciona days_remaining apenas se for trial
+        if verify_auth.get('is_trial', False):
+            response_data['days_remaining'] = verify_auth.get('days_remaining', 0)
+
+        response = JSONResponse(content=response_data)
 
         return response
 
+
     except HTTPException as e:
         # Redireciona para página de login com erro
+        print(f'Erro no login: {e.detail}')
         return RedirectResponse(
-            url=f'/login?error={e.detail}',
+            url=f'/login',
             status_code=status.HTTP_303_SEE_OTHER,
         )
+
     except Exception as e:
         print(f'Erro inesperado no login: {e}')
         return RedirectResponse(
-            url='/login?error=Erro interno no servidor',
+            url='/login',
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -163,7 +159,7 @@ async def logout_user(request: Request):
 
     # Cria resposta de redirecionamento
     response = RedirectResponse(
-        url='/login?success=Logout realizado com sucesso',
+        url='/login',
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -172,7 +168,7 @@ async def logout_user(request: Request):
         key='access_token',
         httponly=True,
         secure=True,  # True em produção
-        samesite='lax',
+        samesite='none',
     )
 
     # Remove outros cookies relacionados à autenticação se existirem

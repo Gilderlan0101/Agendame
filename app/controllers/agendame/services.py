@@ -11,13 +11,8 @@ from tortoise.expressions import Q
 from app.controllers import company
 from app.controllers.company.company_data import MyCompany
 from app.models.trial import TrialAccount
-from app.models.user import (
-    Appointment,
-    BusinessSettings,
-    Client,
-    Service,
-    User,
-)
+from app.models.user import (Appointment, BusinessSettings, Client, Service,
+                             User)
 from app.schemas.agendame.upgrade_service import UpdateServices
 
 
@@ -176,7 +171,9 @@ class Services:
             # Busca apenas por slug
             user = await User.filter(business_slug=identifier).first()
             if not user:
-                user = await TrialAccount.filter(business_slug=identifier).first()
+                user = await TrialAccount.filter(
+                    business_slug=identifier
+                ).first()
 
         elif search_type == 'username':
             # Busca apenas por username
@@ -188,7 +185,9 @@ class Services:
             # Busca apenas por business_name
             user = await User.filter(business_name=identifier).first()
             if not user:
-                user = await TrialAccount.filter(business_name=identifier).first()
+                user = await TrialAccount.filter(
+                    business_name=identifier
+                ).first()
 
         else:  # 'auto' - busca em todos os campos e tabelas
             # Primeiro busca na tabela User
@@ -200,11 +199,15 @@ class Services:
 
             # Se não encontrou em User, busca na TrialAccount
             if not user:
-                user = await TrialAccount.filter(business_slug=identifier).first()
+                user = await TrialAccount.filter(
+                    business_slug=identifier
+                ).first()
             if not user:
                 user = await TrialAccount.filter(username=identifier).first()
             if not user:
-                user = await TrialAccount.filter(business_name=identifier).first()
+                user = await TrialAccount.filter(
+                    business_name=identifier
+                ).first()
 
         if not user:
             raise HTTPException(

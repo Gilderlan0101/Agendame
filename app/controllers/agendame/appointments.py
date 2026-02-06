@@ -1,7 +1,9 @@
 import json
 import urllib.parse
 from dataclasses import field
-from datetime import date, datetime, timedelta, time as dt_time
+from datetime import date, datetime
+from datetime import time as dt_time
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Union
 
@@ -11,13 +13,8 @@ from tortoise.expressions import Q
 from app.controllers.agendame.services import Services
 from app.controllers.company.company_data import MyCompany
 from app.models.trial import TrialAccount
-from app.models.user import (
-    Appointment,
-    BusinessSettings,
-    Client,
-    Service,
-    User,
-)
+from app.models.user import (Appointment, BusinessSettings, Client, Service,
+                             User)
 from app.schemas.agendame.upgrade_service import UpdateServices
 
 
@@ -69,7 +66,9 @@ class Appointments:
         # Se não encontrou em User, busca na TrialAccount
         if not user:
             for field_name in fields:
-                user = await TrialAccount.filter(**{field_name: identifier}).first()
+                user = await TrialAccount.filter(
+                    **{field_name: identifier}
+                ).first()
                 if user:
                     is_trial = True
                     break
@@ -92,12 +91,24 @@ class Appointments:
                 user = await User.filter(id=self.target_company_id).first()
                 if user:
                     self._company_type = 'user'
-                    return await MyCompany.create(company_id=self.target_company_id), False
+                    return (
+                        await MyCompany.create(
+                            company_id=self.target_company_id
+                        ),
+                        False,
+                    )
 
-                trial = await TrialAccount.filter(id=self.target_company_id).first()
+                trial = await TrialAccount.filter(
+                    id=self.target_company_id
+                ).first()
                 if trial:
                     self._company_type = 'trial'
-                    return await MyCompany.create(company_id=self.target_company_id), True
+                    return (
+                        await MyCompany.create(
+                            company_id=self.target_company_id
+                        ),
+                        True,
+                    )
 
             raise ValueError('Identificador de empresa não fornecido')
         except ValueError:
@@ -106,7 +117,9 @@ class Appointments:
                 detail='Empresa não encontrada',
             )
 
-    async def _get_business_hours(self, company_id: int, is_trial: bool) -> Dict:
+    async def _get_business_hours(
+        self, company_id: int, is_trial: bool
+    ) -> Dict:
         """Obtém horários de funcionamento da empresa."""
         if is_trial:
             trial = await TrialAccount.get_or_none(id=company_id)
@@ -137,7 +150,8 @@ class Appointments:
         if settings:
             return {
                 'time_slot_duration': settings.time_slot_duration or 60,
-                'max_daily_appointments': settings.max_daily_appointments or 20,
+                'max_daily_appointments': settings.max_daily_appointments
+                or 20,
                 'min_booking_hours': settings.min_booking_hours or 1,
                 'max_booking_days': settings.max_booking_days or 30,
             }
@@ -221,7 +235,9 @@ class Appointments:
         Retorna horários disponíveis para um serviço em uma data específica.
         """
         if identifier:
-            company, is_trial = await self._get_company_by_identifier(identifier, search_type)
+            company, is_trial = await self._get_company_by_identifier(
+                identifier, search_type
+            )
         else:
             company, is_trial = await self._get_company()
 
@@ -251,7 +267,7 @@ class Appointments:
             3: 'thursday',
             4: 'friday',
             5: 'saturday',
-            6: 'sunday'
+            6: 'sunday',
         }
         day_name = weekday_map[target_date.weekday()]
 
@@ -279,7 +295,9 @@ class Appointments:
             min_booking_hours,
         )
 
-        booked_times = await self._get_booked_times(company_id, target_date, service_id)
+        booked_times = await self._get_booked_times(
+            company_id, target_date, service_id
+        )
 
         available_times = self._filter_available_slots(
             all_time_slots,
@@ -330,22 +348,24 @@ class Appointments:
         """
         Cria um novo agendamento.
         """
-        print(f"DEBUG create_appointment: Iniciando criação")
-        print(f"  service_id: {service_id}")
-        print(f"  date: {appointment_date}")
-        print(f"  time: {appointment_time}")
-        print(f"  client: {client_name}")
-        print(f"  phone: {client_phone}")
-        print(f"  identifier: {identifier}")
-        print(f"  search_type: {search_type}")
+        print(f'DEBUG create_appointment: Iniciando criação')
+        print(f'  service_id: {service_id}')
+        print(f'  date: {appointment_date}')
+        print(f'  time: {appointment_time}')
+        print(f'  client: {client_name}')
+        print(f'  phone: {client_phone}')
+        print(f'  identifier: {identifier}')
+        print(f'  search_type: {search_type}')
 
         if identifier:
-            company, is_trial = await self._get_company_by_identifier(identifier, search_type)
+            company, is_trial = await self._get_company_by_identifier(
+                identifier, search_type
+            )
         else:
             company, is_trial = await self._get_company()
 
         company_id = company.company_id()
-        print(f"DEBUG: Empresa ID: {company_id}, Is Trial: {is_trial}")
+        print(f'DEBUG: Empresa ID: {company_id}, Is Trial: {is_trial}')
 
         # Busca serviço considerando ambos os tipos
         service = await Service.filter(
@@ -355,20 +375,22 @@ class Appointments:
         ).first()
 
         if not service:
-            print(f"DEBUG: Serviço não encontrado - ID: {service_id}")
+            print(f'DEBUG: Serviço não encontrado - ID: {service_id}')
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail='Serviço não encontrado ou indisponível',
             )
 
-        print(f"DEBUG: Serviço encontrado - {service.name}")
+        print(f'DEBUG: Serviço encontrado - {service.name}')
 
         # Buscar ou criar cliente
         client = await self._get_or_create_client(
             company_id, is_trial, client_name, client_phone
         )
 
-        print(f"DEBUG: Cliente processado - ID: {client.id if client else 'Novo'}")
+        print(
+            f"DEBUG: Cliente processado - ID: {client.id if client else 'Novo'}"
+        )
 
         # Preparar dados do agendamento baseado no tipo
         appointment_data = {
@@ -388,18 +410,19 @@ class Appointments:
         if is_trial:
             appointment_data['trial_account_id'] = company_id
             appointment_data['user_id'] = None
-            print(f"DEBUG: Usando trial_account_id: {company_id}")
+            print(f'DEBUG: Usando trial_account_id: {company_id}')
         else:
             appointment_data['user_id'] = company_id
             appointment_data['trial_account_id'] = None
-            print(f"DEBUG: Usando user_id: {company_id}")
+            print(f'DEBUG: Usando user_id: {company_id}')
 
         try:
             appointment = await Appointment.create(**appointment_data)
-            print(f"DEBUG: Agendamento criado - ID: {appointment.id}")
+            print(f'DEBUG: Agendamento criado - ID: {appointment.id}')
         except Exception as e:
-            print(f"DEBUG: Erro ao criar agendamento: {str(e)}")
+            print(f'DEBUG: Erro ao criar agendamento: {str(e)}')
             import traceback
+
             traceback.print_exc()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -422,7 +445,9 @@ class Appointments:
             'appointment_id': appointment.id,
             'confirmation': {
                 'company': {
-                    'name': company_info.business_name if company_info else 'Salão',
+                    'name': company_info.business_name
+                    if company_info
+                    else 'Salão',
                     'phone': company_info.phone if company_info else '',
                     'whatsapp': company_info.whatsapp if company_info else '',
                 },
@@ -445,9 +470,9 @@ class Appointments:
         self, company_id: int, is_trial: bool, name: str, phone: str
     ) -> Optional[Client]:
         """Busca ou cria um cliente."""
-        print(f"DEBUG _get_or_create_client: Buscando cliente")
-        print(f"  company_id: {company_id}, is_trial: {is_trial}")
-        print(f"  name: {name}, phone: {phone}")
+        print(f'DEBUG _get_or_create_client: Buscando cliente')
+        print(f'  company_id: {company_id}, is_trial: {is_trial}')
+        print(f'  name: {name}, phone: {phone}')
 
         # Buscar cliente considerando ambos os tipos
         query = Q(phone=phone)
@@ -459,13 +484,13 @@ class Appointments:
         client = await Client.filter(query).first()
 
         if client:
-            print(f"DEBUG: Cliente existente encontrado - ID: {client.id}")
+            print(f'DEBUG: Cliente existente encontrado - ID: {client.id}')
             if client.full_name != name:
                 client.full_name = name
                 await client.save()
             return client
 
-        print(f"DEBUG: Criando novo cliente")
+        print(f'DEBUG: Criando novo cliente')
         # Preparar dados do cliente baseado no tipo
         client_data = {
             'full_name': name.strip(),
@@ -477,19 +502,20 @@ class Appointments:
         if is_trial:
             client_data['trial_account_id'] = company_id
             client_data['user_id'] = None
-            print(f"DEBUG: Cliente para TrialAccount")
+            print(f'DEBUG: Cliente para TrialAccount')
         else:
             client_data['user_id'] = company_id
             client_data['trial_account_id'] = None
-            print(f"DEBUG: Cliente para User")
+            print(f'DEBUG: Cliente para User')
 
         try:
             client = await Client.create(**client_data)
-            print(f"DEBUG: Cliente criado - ID: {client.id}")
+            print(f'DEBUG: Cliente criado - ID: {client.id}')
             return client
         except Exception as e:
-            print(f"DEBUG: Erro ao criar cliente: {str(e)}")
+            print(f'DEBUG: Erro ao criar cliente: {str(e)}')
             import traceback
+
             traceback.print_exc()
             return None
 
@@ -540,12 +566,16 @@ class Appointments:
                     },
                     'service': {
                         'id': apt.service_id,
-                        'name': apt.service.name if apt.service else 'Serviço não encontrado',
+                        'name': apt.service.name
+                        if apt.service
+                        else 'Serviço não encontrado',
                         'price': str(apt.price),
                     },
                     'status': apt.status,
                     'notes': apt.notes,
-                    'created_at': apt.created_at.isoformat() if apt.created_at else None,
+                    'created_at': apt.created_at.isoformat()
+                    if apt.created_at
+                    else None,
                 }
             )
 
@@ -623,10 +653,12 @@ class Appointments:
             # Validar disponibilidade se data/hora for alterada
             if schema.appointment_date or schema.appointment_time:
                 appointment_date = (
-                    schema.appointment_date or search_appointment.appointment_date
+                    schema.appointment_date
+                    or search_appointment.appointment_date
                 )
                 appointment_time = (
-                    schema.appointment_time or search_appointment.appointment_time
+                    schema.appointment_time
+                    or search_appointment.appointment_time
                 )
                 service_id = schema.service_id or search_appointment.service_id
 
@@ -649,7 +681,9 @@ class Appointments:
 
             # Atualizar o agendamento
             update_data['updated_at'] = datetime.utcnow()
-            await Appointment.filter(id=target_appointment).update(**update_data)
+            await Appointment.filter(id=target_appointment).update(
+                **update_data
+            )
 
             # Buscar o agendamento atualizado
             updated_appointment = (
@@ -659,8 +693,13 @@ class Appointments:
             )
 
             # Atualizar cliente se telefone foi alterado
-            if schema.client_phone is not None and updated_appointment.client_id:
-                client = await Client.filter(id=updated_appointment.client_id).first()
+            if (
+                schema.client_phone is not None
+                and updated_appointment.client_id
+            ):
+                client = await Client.filter(
+                    id=updated_appointment.client_id
+                ).first()
                 if client and client.phone != schema.client_phone:
                     # Buscar cliente existente com novo telefone
                     client_query = Q(phone=schema.client_phone)
@@ -681,7 +720,8 @@ class Appointments:
                     else:
                         # Criar novo cliente
                         new_client_data = {
-                            'full_name': schema.client_name or search_appointment.client_name,
+                            'full_name': schema.client_name
+                            or search_appointment.client_name,
                             'phone': schema.client_phone,
                             'total_appointments': 1,
                             'is_active': True,
@@ -707,7 +747,9 @@ class Appointments:
                     'client_name': updated_appointment.client_name,
                     'client_phone': updated_appointment.client_phone,
                     'service_id': updated_appointment.service_id,
-                    'service_name': updated_appointment.service.name if updated_appointment.service else None,
+                    'service_name': updated_appointment.service.name
+                    if updated_appointment.service
+                    else None,
                     'appointment_date': updated_appointment.appointment_date.isoformat(),
                     'appointment_time': updated_appointment.appointment_time,
                     'price': str(updated_appointment.price),

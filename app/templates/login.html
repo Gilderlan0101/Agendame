@@ -210,7 +210,8 @@
 
                 // Redirecionar para dashboard (simulação)
                 setTimeout(() => {
-                    window.location.href = 'https://agendame.onrender.com/agendame/dashboard';
+                    const currentOrigin = window.location.origin;
+                    window.location.href = `${currentOrigin}/agendame/dashboard`;
                 }, 1000);
 
             }, 1500);

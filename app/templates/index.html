@@ -25,7 +25,7 @@
                 <i class="fas fa-gem"></i>
                 <div class="trial-text">
                     <strong>CONTA TRIAL PREMIUM</strong>
-                    <span id="trialDays">7 dias restantes</span>
+                    <span id="trialDays"></span>
                 </div>
                 <button class="btn btn-sm btn-upgrade" onclick="showTrialUpgradeModal()">
                     <i class="fas fa-bolt"></i> Fazer Upgrade
@@ -1022,62 +1022,17 @@
 
     <!-- Scripts -->
     <script type="module" src="{{ url_for('static', path='main.js') }}"></script>
+    <script  src="{{ url_for('static', path='auth.js') }}"></script>
+
+
+
     <script type="module" src="{{ url_for('static', path='clients.js') }}"></script>
+    <script  src="{{ url_for('static', path='trial/show_modal_trial.js') }}"></script>
     <script type="module" src="{{ url_for('static', path='logout.js') }}"></script>
 
 
 
 
-    <script>
-        // Funções globais para uso no HTML
-        window.closeModal = function(modalId) {
-            document.getElementById(modalId).classList.remove('show');
-        };
-
-        window.showTrialUpgradeModal = function() {
-            document.getElementById('trialUpgradeModal').classList.add('show');
-        };
-
-        // Inicializar quando o DOM estiver carregado
-        document.addEventListener('DOMContentLoaded', function() {
-            // Verificar se é conta trial
-            const userData = JSON.parse(localStorage.getItem('agendame_user') || '{}');
-            if (userData.is_trial) {
-                const trialBanner = document.getElementById('trialBanner');
-                const trialDays = document.getElementById('trialDays');
-
-                trialBanner.style.display = 'block';
-                trialDays.textContent = `${userData.days_remaining || 7} dias restantes`;
-
-                // Se restam 3 dias ou menos, destacar
-                if (userData.days_remaining <= 3) {
-                    trialBanner.style.background = 'linear-gradient(135deg, #f59e0b, #fbbf24)';
-                }
-            }
-
-            // Configurar tabs
-            document.querySelectorAll('.tab-btn').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const tabId = this.getAttribute('data-tab');
-                    window.switchTab(tabId);
-                });
-            });
-
-            // Configurar dropdown do usuário
-            document.querySelector('.dropdown-toggle').addEventListener('click', function() {
-                document.querySelector('.dropdown-menu').classList.toggle('show');
-            });
-
-            // Fechar dropdown ao clicar fora
-            document.addEventListener('click', function(e) {
-                if (!e.target.closest('.dropdown')) {
-                    document.querySelector('.dropdown-menu').classList.remove('show');
-                }
-            });
-
-
-        });
-    </script>
     <script>
     // Função para abrir modais
     window.openModal = function(modalId) {

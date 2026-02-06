@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'https://agendame.onrender.com';
+const API_BASE_URL = widows.origin;
 const TRIAL_ENDPOINT = '/auth/signup/free-trial';
 
 // DOM Elements

@@ -4,10 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.controllers.agendame.services import Services
 from app.models.user import Service, User
-from app.schemas.agendame.register_service import (
-    ServiceCreate,
-    ServiceResponse,
-)
+from app.schemas.agendame.register_service import (ServiceCreate,
+                                                   ServiceResponse)
 from app.service.jwt.depends import SystemUser, get_current_user
 
 router = APIRouter(tags=['Agendame-company'])

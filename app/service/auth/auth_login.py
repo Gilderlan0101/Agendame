@@ -1,16 +1,15 @@
+import os
 from typing import Any, Dict, Optional
-
+from dotenv import load_dotenv
 from fastapi import HTTPException, Request, status
 from fastapi.responses import RedirectResponse
-from dotenv import load_dotenv
+
 from app.models.trial import TrialAccount
 from app.models.user import User
+from app.service.auth.auth_register import SignupFreeTrial
 from app.schemas.auth.schemas_login import LoginResponse
-from app.service.jwt.auth import (
-    create_access_token,
-    create_refresh_token,
-    verify_password,
-)
+from app.service.jwt.auth import (create_access_token, create_refresh_token,
+                                  verify_password)
 
 load_dotenv()
 
@@ -61,9 +60,7 @@ async def checking_account(
                 httponly=True,
                 max_age=3600 * 24 * 7,  # 7 dias
                 secure=True,
-                samesite=os.getenv('SAMESITE')
-                if request.url.scheme == 'http'
-                else 'none',
+                samesite='none' if request.url.scheme == 'https' else 'lax'
             )
         else:
             # Se não tiver Request, cria uma resposta vazia
@@ -85,9 +82,10 @@ async def checking_account(
 
     except HTTPException as e:
         # Se tiver Request, retorna RedirectResponse
+        print(f'Erro no login: {e.detail}')
         if request:
             return RedirectResponse(
-                url=f'/login?error={e.detail}',
+                url=f'/login',
                 status_code=status.HTTP_303_SEE_OTHER,
             )
         # Se não tiver Request, levanta a exceção
@@ -130,6 +128,10 @@ async def checking_account_trial(
         access_token = create_access_token(user_id_str)
         refresh_token = create_refresh_token(user_id_str)
 
+        # Buscar tempo restante da conta trial
+        days_remaining = SignupFreeTrial(data=None)
+        days = await days_remaining.count_days_remaining(account_target_id=user.id)
+
         # Se tiver um Request, cria resposta com redirecionamento
         if request:
             next_url = request.query_params.get('next', '/agendame/dashboard')
@@ -143,9 +145,8 @@ async def checking_account_trial(
                 httponly=True,
                 max_age=3600 * 24 * 7,  # 7 dias
                 secure=True,
-                samesite=os.getenv('SAMESITE')
-                if request.url.scheme == 'http'
-                else 'none',
+                samesite='none' if request.url.scheme == 'https' else 'lax',
+
             )
         else:
             response = None
@@ -162,12 +163,14 @@ async def checking_account_trial(
             'slug': user.business_slug,
             'response': response,
             'is_trial': True,
+            'days_remaining': days,
         }
 
     except HTTPException as e:
+        print(f'Erro no login trial: {e.detail}')
         if request:
             return RedirectResponse(
-                url=f'/login?error={e.detail}',
+                url=f'/login',
                 status_code=status.HTTP_303_SEE_OTHER,
             )
         raise

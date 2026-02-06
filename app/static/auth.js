@@ -1,16 +1,16 @@
-// auth.js - Gerenciamento de autenticação CORRIGIDO (SEM USUÁRIO FALSO)
+// auth.js - Gerenciamento de autenticação
 
 let currentUser = null;
 let authToken = null;
 
 // Configurações baseadas no ambiente
 const IS_PRODUCTION = window.location.protocol === 'https:' || window.location.hostname !== 'localhost';
-const API_BASE_URL = 'https://agendame.onrender.com/'; // URL do seu backend no Render
+const API_BASE_URL = window.location.origin + '/'; // URL do backend
 
 /**
  * Inicializa o sistema de autenticação
  */
-export function initAuth() {
+window.initAuth = function() {
     console.log('🔐 Inicializando sistema de autenticação...');
     console.log(`🌍 Ambiente: ${IS_PRODUCTION ? 'Produção' : 'Desenvolvimento'}`);
     console.log(`🌐 API Base: ${API_BASE_URL}`);
@@ -25,12 +25,12 @@ export function initAuth() {
 
     console.log('📭 Nenhum token encontrado, usuário não autenticado');
     return Promise.resolve(false);
-}
+};
 
 /**
  * Realiza login do usuário
  */
-export async function loginUser(email, password) {
+window.loginUser = async function(email, password) {
     console.log('🔐 Tentando login para:', email);
 
     try {
@@ -52,7 +52,7 @@ export async function loginUser(email, password) {
                 'Accept': 'application/json',
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            credentials: 'include', // IMPORTANTE: para cookies funcionarem
+            credentials: 'include',
         });
 
         console.log('📥 Resposta recebida:', response.status, response.statusText);
@@ -71,7 +71,6 @@ export async function loginUser(email, password) {
                 }
             } catch (e) {
                 console.log('❌ Não foi possível parsear JSON de erro:', e);
-                // Se não conseguir parsear JSON, usar status
                 if (response.status === 401) {
                     errorMessage = 'E-mail ou senha incorretos';
                 } else if (response.status === 403) {
@@ -88,6 +87,8 @@ export async function loginUser(email, password) {
 
         const data = await response.json();
         console.log('✅ Dados recebidos do login:', data);
+        localStorage.setItem('days_remaining', data.days_remaining || 0);
+
 
         // Salvar token (se vier na resposta)
         if (data.access_token) {
@@ -109,14 +110,16 @@ export async function loginUser(email, password) {
                 username: data.username || data.email.split('@')[0],
                 business_name: data.business_name || 'Minha Empresa',
                 is_trial: data.is_trial || false,
-                slug: data.slug || ''
+                slug: data.slug || '',
+                days_remaining: data.days_remaining || 0
             };
+
+
 
             localStorage.setItem('agendame_user', JSON.stringify(currentUser));
             localStorage.setItem('agendame_token', authToken);
             localStorage.setItem('user_id', currentUser.id);
-
-
+            localStorage.setItem('days_remaining', currentUser.days_remaining || 0);
         }
 
         // Tentar carregar dados completos do usuário
@@ -124,7 +127,6 @@ export async function loginUser(email, password) {
             await loadUserData();
         } catch (loadError) {
             console.warn('⚠️ Não foi possível carregar dados completos, usando dados básicos:', loadError);
-            // Continuamos com os dados básicos que já temos
         }
 
         // Mostrar mensagem de sucesso
@@ -138,9 +140,7 @@ export async function loginUser(email, password) {
     } catch (error) {
         console.error('🚨 Erro completo no login:', error);
 
-        // Mensagens mais específicas
         let userMessage = error.message;
-
         if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
             userMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
         } else if (error.message.includes('fetch')) {
@@ -153,7 +153,7 @@ export async function loginUser(email, password) {
     } finally {
         showLoading(false);
     }
-}
+};
 
 /**
  * Carrega dados COMPLETOS do usuário atual
@@ -176,11 +176,9 @@ async function loadUserData() {
             credentials: 'include',
         });
 
-        console.log('📊 Status da requisição /auth/me:', response.status);
-
         if (response.ok) {
             const userData = await response.json();
-            console.log('✅ Dados completos do usuário carregados:', userData);
+            console.log('✅ Dados completos do usuário carregados:', true);
 
             // Atualizar currentUser com dados completos
             currentUser = userData;
@@ -188,7 +186,6 @@ async function loadUserData() {
             // Atualizar localStorage com dados completos
             localStorage.setItem('agendame_user', JSON.stringify(currentUser));
             localStorage.setItem('is_trial', currentUser.is_trial ? '1' : '0');
-            // salvando id do usuario
             localStorage.setItem('id', currentUser.id);
 
             // Atualizar interface
@@ -207,15 +204,11 @@ async function loadUserData() {
                 return currentUser;
             }
 
-            // Se não temos dados, lançar erro - NÃO CRIAR USUÁRIO FALSO
             throw new Error('Não foi possível carregar dados do usuário');
         }
 
     } catch (error) {
         console.error('🚨 Erro ao carregar dados do usuário:', error);
-
-        // NÃO CRIAR USUÁRIO FALSO
-        // Apenas propagar o erro para quem chamou
         throw error;
     }
 }
@@ -257,7 +250,7 @@ function updateUserInterface() {
             if (isTrial) {
                 const trialDaysElement = document.getElementById('trialDays');
                 if (trialDaysElement) {
-                    trialDaysElement.textContent = '7 dias restantes';
+                    trialDaysElement.textContent = currentUser.days_remaining ? `${currentUser.days_remaining} dias restantes` : '7 dias restantes';
                 }
             }
         }
@@ -313,7 +306,7 @@ async function validateTokenAndLoadUser() {
 /**
  * Realiza logout
  */
-export function logoutUser() {
+window.logoutUser = function() {
     console.log('🚪 Realizando logout...');
 
     // Mostrar loading
@@ -345,7 +338,7 @@ export function logoutUser() {
     .finally(() => {
         showLogoutLoading(false);
     });
-}
+};
 
 /**
  * Mostra loading durante logout
@@ -389,7 +382,9 @@ function clearAuth() {
         'is_trial',
         'user_data',
         'auth_token',
-        'refresh_token'
+        'refresh_token',
+        'user_id',
+        'days_remaining'
     ];
 
     itemsToRemove.forEach(item => {
@@ -409,23 +404,23 @@ function clearAuth() {
 /**
  * Verifica se o usuário está autenticado
  */
-export function isAuthenticated() {
+window.isAuthenticated = function() {
     return !!authToken && !!currentUser;
-}
+};
 
 /**
  * Obtém o usuário atual
  */
-export function getUser() {
+window.getUser = function() {
     return currentUser;
-}
+};
 
 /**
  * Obtém o token atual
  */
-export function getToken() {
+window.getToken = function() {
     return authToken;
-}
+};
 
 /**
  * Salva token no cookie e localStorage
@@ -475,8 +470,6 @@ function showMessage(message, type = 'info') {
 
     const alertContainer = document.getElementById('alertContainer');
     if (!alertContainer) {
-        console.warn('Container de alertas não encontrado');
-        // Fallback: alert nativo
         if (type === 'error') {
             alert(`Erro: ${message}`);
         } else if (type === 'success') {
@@ -549,7 +542,7 @@ function showLoading(show) {
 /**
  * Protege rotas que requerem autenticação
  */
-export function protectRoute() {
+window.protectRoute = function() {
     console.log('🛡️ Verificando proteção de rota...');
     console.log('📍 Caminho atual:', window.location.pathname);
 
@@ -571,12 +564,12 @@ export function protectRoute() {
     }
 
     return true;
-}
+};
 
 /**
  * Inicializa formulário de login
  */
-export function initLoginForm() {
+window.initLoginForm = function() {
     console.log('📝 Inicializando formulário de login...');
 
     const loginForm = document.getElementById('loginForm');
@@ -628,12 +621,12 @@ export function initLoginForm() {
     }
 
     console.log('✅ Formulário de login inicializado');
-}
+};
 
 /**
  * Inicializa botão de logout
  */
-export function initLogoutButton() {
+window.initLogoutButton = function() {
     // Botão por ID
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
@@ -656,12 +649,12 @@ export function initLogoutButton() {
             }
         });
     });
-}
+};
 
 /**
  * Função para alternar visibilidade da senha
  */
-export function initPasswordToggle() {
+window.initPasswordToggle = function() {
     const toggleBtn = document.querySelector('.toggle-password');
     if (toggleBtn) {
         toggleBtn.addEventListener('click', function() {
@@ -677,12 +670,12 @@ export function initPasswordToggle() {
             }
         });
     }
-}
+};
 
 /**
  * Testa a conexão com o servidor
  */
-export async function testConnection() {
+window.testConnection = async function() {
     try {
         console.log('📡 Testando conexão com o servidor...');
         const response = await fetch(`${API_BASE_URL}health`, {
@@ -702,7 +695,7 @@ export async function testConnection() {
         console.error('❌ Não foi possível conectar ao servidor:', error);
         return false;
     }
-}
+};
 
 // Inicializar quando o DOM carregar
 document.addEventListener('DOMContentLoaded', function() {
@@ -746,9 +739,9 @@ document.addEventListener('DOMContentLoaded', function() {
 window.AgendameAuth = {
     login: loginUser,
     logout: logoutUser,
-    isAuthenticated,
-    getUser,
-    getToken,
-    protectRoute,
-    testConnection
+    isAuthenticated: isAuthenticated,
+    getUser: getUser,
+    getToken: getToken,
+    protectRoute: protectRoute,
+    testConnection: testConnection
 };
