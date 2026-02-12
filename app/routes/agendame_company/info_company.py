@@ -1,3 +1,4 @@
+# info_company.py
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.controllers.company.company_data import MyCompany
